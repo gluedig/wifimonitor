@@ -6,13 +6,16 @@
 #include <string>
 #include <iostream>
 
+#include <mutex>
 #include <tins/tins.h>
+
 #include "ClientInfo.h"
 
 struct ClientData {
 	ClientData() : age(0), last_rssi(0), avg_rssi(0) {};
 	Tins::Dot11::address_type mac;
 	int age;
+	time_t first_seen;
 
 	int last_rssi;
 	int avg_rssi;
@@ -24,7 +27,7 @@ struct ClientData {
 class ClientDb {
 	std::map<Tins::Dot11::address_type, ClientData> db;
 	Tins::Dot11::address_type null_address;
-
+	std::mutex db_mutex;
 public:
 	bool newClientEvent(ClientInfo *info);
 	friend std::ostream& operator<<(std::ostream &os, const ClientDb &obj);
