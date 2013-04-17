@@ -2,7 +2,14 @@
 #include <exception>
 #include <stdio.h>
 #include <signal.h>
+#include <thread>
+#include <chrono>
+
 #include <tins/tins.h>
+
+#define CLEANUP_PERIOD 30
+#define CLEANUP_MAXAGE 4
+
 
 using namespace Tins;
 
@@ -12,9 +19,10 @@ using namespace Tins;
 #include "Dot11Parser.h"
 #include "ClientDb.h"
 
-
+std::thread cleanup_thread;
 std::vector<Parser*> parsers;
 ClientDb clientdb;
+
 static int count;
 static int ignored;
 
@@ -59,6 +67,14 @@ bool parse(const RefPacket &ref) {
 	return true;
 }
 
+void cleanup_function(ClientDb *db)
+{
+	while (1) {
+		std::this_thread::sleep_for(std::chrono::seconds(CLEANUP_PERIOD));
+		db->cleanup(CLEANUP_MAXAGE);
+	}
+}
+
 
 int main(int argc, char **argv)
 {
@@ -71,6 +87,7 @@ int main(int argc, char **argv)
 	 /* Ctrl-C handler */
         signal(SIGINT, terminate_handler);
 
+	cleanup_thread = std::thread(cleanup_function, &clientdb);
 	parsers.push_back(new RadioTapParser());
 	parsers.push_back(new Dot11Parser());
 	

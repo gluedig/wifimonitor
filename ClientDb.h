@@ -31,7 +31,7 @@ class ClientDb {
 public:
 	bool newClientEvent(ClientInfo *info);
 	friend std::ostream& operator<<(std::ostream &os, const ClientDb &obj);
-
+	void cleanup(int maxage);
 
 };
 #endif

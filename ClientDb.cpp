@@ -49,6 +49,20 @@ bool ClientDb::newClientEvent(ClientInfo *info)
 	return true;
 }
 
+void ClientDb::cleanup(int maxage)
+{
+	std::map<Tins::Dot11::address_type, ClientData>::iterator it;
+	db_mutex.lock();
+	for (it = db.begin(); it != db.end(); ++it) {
+		it->second.age++;
+		if (it->second.age > maxage) {
+			std::cout << "Removing " << it->second;
+			db.erase(it);
+		}
+	}
+	db_mutex.unlock();
+}
+
 std::ostream& operator<<(std::ostream &os, const ClientDb &obj)
 {
 	const std::map<Tins::Dot11::address_type, ClientData> *db = &(obj.db);

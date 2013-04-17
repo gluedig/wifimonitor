@@ -15,7 +15,7 @@ void Dot11Parser::parseBeacon(ClientInfo *info, const PDU &pdu)
 	
 	info->mac = beacon->addr3();
 	if (!ap_set.count(info->mac)) {
-		std::cout << "New AP MAC:" << info->mac << " SSID: " << beacon->ssid() << " RSSI: " << (int)info->rssi << std::endl;
+		std::cout << "New AP MAC: " << info->mac << " SSID: " << beacon->ssid() << " RSSI: " << (int)info->rssi << std::endl;
 
 	}
 	ap_set.insert(info->mac);
