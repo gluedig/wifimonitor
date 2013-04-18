@@ -12,27 +12,28 @@
 #include "ClientInfo.h"
 
 struct ClientData {
-	ClientData() : age(0), last_rssi(0), avg_rssi(0) {};
-	Tins::Dot11::address_type mac;
-	int age;
-	time_t first_seen;
+        ClientData() : age(0), last_rssi(0), avg_rssi(0) {};
+        Tins::Dot11::address_type mac;
+        int age;
+        time_t first_seen;
 
-	int last_rssi;
-	int avg_rssi;
+        int last_rssi;
+        int avg_rssi;
 
-	std::set<std::string> asked_ssids;
-	friend std::ostream& operator<<(std::ostream &os, const ClientData &obj);
+        std::set<std::string> asked_ssids;
+        friend std::ostream &operator<<(std::ostream &os, const ClientData &obj);
 };
 
-class ClientDb {
-	std::map<Tins::Dot11::address_type, ClientData> db;
-	Tins::Dot11::address_type null_address;
-	std::mutex db_mutex;
-	int added, removed;
-public:
-	bool newClientEvent(ClientInfo *info);
-	friend std::ostream& operator<<(std::ostream &os, const ClientDb &obj);
-	void cleanup(int maxage);
-	ClientDb();
+class ClientDb
+{
+                std::map<Tins::Dot11::address_type, ClientData> db;
+                Tins::Dot11::address_type null_address;
+                std::mutex db_mutex;
+                int added, removed;
+        public:
+                bool newClientEvent(ClientInfo *info);
+                friend std::ostream &operator<<(std::ostream &os, const ClientDb &obj);
+                void cleanup(int maxage);
+                ClientDb();
 };
 #endif

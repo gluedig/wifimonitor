@@ -7,91 +7,91 @@
 #define RSSI_HIST 1
 
 bool ClientDb::newClientEvent(ClientInfo *info)
-{	
-	if (info->mac == null_address || info->mac == Tins::Dot11::BROADCAST)
-		return false;
+{
+        if (info->mac == null_address || info->mac == Tins::Dot11::BROADCAST)
+                return false;
 
-	db_mutex.lock();
+        db_mutex.lock();
 
-	if (db.count(info->mac)) {
-		bool send_update = false;
-		ClientData data = db[info->mac];
-		data.age = 0;
+        if (db.count(info->mac)) {
+                bool send_update = false;
+                ClientData data = db[info->mac];
+                data.age = 0;
 
-		/* do RSSI averaging */
-		int prev_rssi = data.last_rssi;
-		data.last_rssi = info->rssi;
-		int prev_avg = data.avg_rssi;
-		data.avg_rssi = prev_avg - prev_rssi/AVG_COUNT + info->rssi/AVG_COUNT;
+                /* do RSSI averaging */
+                int prev_rssi = data.last_rssi;
+                data.last_rssi = info->rssi;
+                int prev_avg = data.avg_rssi;
+                data.avg_rssi = prev_avg - prev_rssi/AVG_COUNT + info->rssi/AVG_COUNT;
 
-		if (info->asked_SSID.size() && !data.asked_ssids.count(info->asked_SSID)) {
-			data.asked_ssids.insert(info->asked_SSID);
+                if (info->asked_SSID.size() && !data.asked_ssids.count(info->asked_SSID)) {
+                        data.asked_ssids.insert(info->asked_SSID);
 //			std::cout << "New probed SSID: " << info->asked_SSID << " " << data << std::endl;
-			send_update = true;
-		}
+                        send_update = true;
+                }
 
-		/* trigger if average RSSI changed */
-		if ((data.avg_rssi != prev_avg) &&
-			(data.avg_rssi > prev_avg+RSSI_HIST) || (data.avg_rssi < prev_avg-RSSI_HIST)) {
+                /* trigger if average RSSI changed */
+                if ((data.avg_rssi != prev_avg) &&
+                    (data.avg_rssi > prev_avg+RSSI_HIST) || (data.avg_rssi < prev_avg-RSSI_HIST)) {
 //			std::cout << "RSSI changed Prev RSSI: " << prev_avg << " " << data << std::endl;
-			send_update = true;
-		}
+                        send_update = true;
+                }
 
-		db[info->mac] = data;
+                db[info->mac] = data;
 
-		if (send_update) {
+                if (send_update) {
 //TODO: send to proper place
 //TODO: use proper id
-			ClientEventMessage msg(EventMessage::CLIENT_UPDATE, 1, data.mac,
-				data.avg_rssi, data.last_rssi, data.asked_ssids);
-			std::cout << msg.serialize() << std::endl;
-		}
-	} else {
-		ClientData new_data;
-		new_data.mac = info->mac;
-		new_data.last_rssi = (int)info->rssi;
-		new_data.avg_rssi = (int)info->rssi;
-		new_data.first_seen = info->timestamp.seconds();
-		if (info->asked_SSID.size())
-			new_data.asked_ssids.insert(info->asked_SSID);
+                        ClientEventMessage msg(EventMessage::CLIENT_UPDATE, 1, data.mac,
+                                               data.avg_rssi, data.last_rssi, data.asked_ssids);
+                        std::cout << msg.serialize() << std::endl;
+                }
+        } else {
+                ClientData new_data;
+                new_data.mac = info->mac;
+                new_data.last_rssi = (int)info->rssi;
+                new_data.avg_rssi = (int)info->rssi;
+                new_data.first_seen = info->timestamp.seconds();
+                if (info->asked_SSID.size())
+                        new_data.asked_ssids.insert(info->asked_SSID);
 
-		added++;
-		db.insert(std::pair<Tins::Dot11::address_type, ClientData>(info->mac, new_data));
+                added++;
+                db.insert(std::pair<Tins::Dot11::address_type, ClientData>(info->mac, new_data));
 
 //TODO: send to proper place
 //TODO: use proper id
 //		std::cout << "New " << new_data << std::endl;
-		ClientEventMessage msg(EventMessage::CLIENT_ADD, 1, new_data.mac,
-			 new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
-		std::cout << msg.serialize() << std::endl;
-	}	
-	db_mutex.unlock();
+                ClientEventMessage msg(EventMessage::CLIENT_ADD, 1, new_data.mac,
+                                       new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
+                std::cout << msg.serialize() << std::endl;
+        }
+        db_mutex.unlock();
 
-	return true;
+        return true;
 }
 
 void ClientDb::cleanup(int maxage)
 {
-	db_mutex.lock();
-	auto it = db.begin();
-	while (it != db.end()) {
-		it->second.age++;
-		if (it->second.age > maxage) {
+        db_mutex.lock();
+        auto it = db.begin();
+        while (it != db.end()) {
+                it->second.age++;
+                if (it->second.age > maxage) {
 //			std::cout << "Removing " << it->second << std::endl;
 //TODO: send to proper place
 //TODO: use proper id
-			ClientEventMessage msg(EventMessage::CLIENT_REMOVE, 1, it->second.mac,
-				it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
-			std::cout << msg.serialize() << std::endl;
+                        ClientEventMessage msg(EventMessage::CLIENT_REMOVE, 1, it->second.mac,
+                                               it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
+                        std::cout << msg.serialize() << std::endl;
 
-			removed++;
-			db.erase(it++);
-		} else {
-			++it;
-		}
-	}
+                        removed++;
+                        db.erase(it++);
+                } else {
+                        ++it;
+                }
+        }
 
-	db_mutex.unlock();
+        db_mutex.unlock();
 }
 
 ClientDb::ClientDb() : added(0), removed(0)
@@ -99,33 +99,32 @@ ClientDb::ClientDb() : added(0), removed(0)
 
 }
 
-std::ostream& operator<<(std::ostream &os, const ClientDb &obj)
+std::ostream &operator<<(std::ostream &os, const ClientDb &obj)
 {
-	const std::map<Tins::Dot11::address_type, ClientData> *db = &(obj.db);
-	std::map<Tins::Dot11::address_type, ClientData>::const_iterator it;
+        const std::map<Tins::Dot11::address_type, ClientData> *db = &(obj.db);
+        std::map<Tins::Dot11::address_type, ClientData>::const_iterator it;
 
-	os << "ClientDb dump, elements: " << db->size() << " added: " << obj.added << " removed: " << obj.removed << std::endl;
-	for ( it = db->begin(); it != db->end(); ++it)
-	{
-		os << it->second << std::endl;
-	}
+        os << "ClientDb dump, elements: " << db->size() << " added: " << obj.added << " removed: " << obj.removed << std::endl;
+        for ( it = db->begin(); it != db->end(); ++it) {
+                os << it->second << std::endl;
+        }
 
-	return os;
+        return os;
 }
 
-std::ostream& operator<<(std::ostream &os, const ClientData &obj)
+std::ostream &operator<<(std::ostream &os, const ClientData &obj)
 {
-	os << "Client MAC: " << obj.mac << "\n\tAvg RSSI: " << obj.avg_rssi;
-	os << "\n\tFirst seen: " << ctime(&obj.first_seen);
-	if (obj.asked_ssids.size()) {
-		os << "\tAsked SSIDs:";
-		std::set<std::string>::const_iterator it;
-		for (it = obj.asked_ssids.begin(); it != obj.asked_ssids.end(); ++it) {
-			os << " " << *it;
-		}
-		os << std::endl;
-	}
-	
-	return os;
+        os << "Client MAC: " << obj.mac << "\n\tAvg RSSI: " << obj.avg_rssi;
+        os << "\n\tFirst seen: " << ctime(&obj.first_seen);
+        if (obj.asked_ssids.size()) {
+                os << "\tAsked SSIDs:";
+                std::set<std::string>::const_iterator it;
+                for (it = obj.asked_ssids.begin(); it != obj.asked_ssids.end(); ++it) {
+                        os << " " << *it;
+                }
+                os << std::endl;
+        }
+
+        return os;
 }
 
