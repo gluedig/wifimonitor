@@ -28,10 +28,11 @@ class ClientDb {
 	std::map<Tins::Dot11::address_type, ClientData> db;
 	Tins::Dot11::address_type null_address;
 	std::mutex db_mutex;
+	int added, removed;
 public:
 	bool newClientEvent(ClientInfo *info);
 	friend std::ostream& operator<<(std::ostream &os, const ClientDb &obj);
 	void cleanup(int maxage);
-
+	ClientDb();
 };
 #endif

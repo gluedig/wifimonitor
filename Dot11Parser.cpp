@@ -4,7 +4,6 @@ using namespace Tins;
 Dot11Parser::~Dot11Parser()
 {
 	ap_set.clear();
-
 }
 
 void Dot11Parser::parseBeacon(ClientInfo *info, const PDU &pdu)
