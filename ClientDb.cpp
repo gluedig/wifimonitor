@@ -1,6 +1,8 @@
 #include <time.h>
 #include "ClientDb.h"
 
+#include "EventMessage.h"
+
 #define AVG_COUNT 8
 #define RSSI_HIST 1
 
@@ -12,6 +14,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
 	db_mutex.lock();
 
 	if (db.count(info->mac)) {
+		bool send_update = false;
 		ClientData data = db[info->mac];
 		data.age = 0;
 
@@ -21,17 +24,28 @@ bool ClientDb::newClientEvent(ClientInfo *info)
 		int prev_avg = data.avg_rssi;
 		data.avg_rssi = prev_avg - prev_rssi/AVG_COUNT + info->rssi/AVG_COUNT;
 
-		if (info->asked_SSID.size() && !data.asked_ssids.count(info->asked_SSID))
+		if (info->asked_SSID.size() && !data.asked_ssids.count(info->asked_SSID)) {
 			data.asked_ssids.insert(info->asked_SSID);
+//			std::cout << "New probed SSID: " << info->asked_SSID << " " << data << std::endl;
+			send_update = true;
+		}
 
 		/* trigger if average RSSI changed */
 		if ((data.avg_rssi != prev_avg) &&
 			(data.avg_rssi > prev_avg+RSSI_HIST) || (data.avg_rssi < prev_avg-RSSI_HIST)) {
-			std::cout << "RSSI changed Prev RSSI: " << prev_avg << " " << data << std::endl;
-
+//			std::cout << "RSSI changed Prev RSSI: " << prev_avg << " " << data << std::endl;
+			send_update = true;
 		}
 
 		db[info->mac] = data;
+
+		if (send_update) {
+//TODO: send to proper place
+//TODO: use proper id
+			ClientEventMessage msg(EventMessage::CLIENT_UPDATE, 1, data.mac,
+				data.avg_rssi, data.last_rssi, data.asked_ssids);
+			std::cout << msg.serialize() << std::endl;
+		}
 	} else {
 		ClientData new_data;
 		new_data.mac = info->mac;
@@ -41,9 +55,15 @@ bool ClientDb::newClientEvent(ClientInfo *info)
 		if (info->asked_SSID.size())
 			new_data.asked_ssids.insert(info->asked_SSID);
 
-		std::cout << "New " << new_data << std::endl;
 		added++;
 		db.insert(std::pair<Tins::Dot11::address_type, ClientData>(info->mac, new_data));
+
+//TODO: send to proper place
+//TODO: use proper id
+//		std::cout << "New " << new_data << std::endl;
+		ClientEventMessage msg(EventMessage::CLIENT_ADD, 1, new_data.mac,
+			 new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
+		std::cout << msg.serialize() << std::endl;
 	}	
 	db_mutex.unlock();
 
@@ -57,7 +77,13 @@ void ClientDb::cleanup(int maxage)
 	while (it != db.end()) {
 		it->second.age++;
 		if (it->second.age > maxage) {
-			std::cout << "Removing " << it->second << std::endl;
+//			std::cout << "Removing " << it->second << std::endl;
+//TODO: send to proper place
+//TODO: use proper id
+			ClientEventMessage msg(EventMessage::CLIENT_REMOVE, 1, it->second.mac,
+				it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
+			std::cout << msg.serialize() << std::endl;
+
 			removed++;
 			db.erase(it++);
 		} else {

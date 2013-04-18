@@ -1,4 +1,5 @@
 #include "Dot11Parser.h"
+#include "EventMessage.h"
 using namespace Tins;
 
 Dot11Parser::~Dot11Parser()
@@ -14,7 +15,13 @@ void Dot11Parser::parseBeacon(ClientInfo *info, const PDU &pdu)
 	
 	info->mac = beacon->addr3();
 	if (!ap_set.count(info->mac)) {
-		std::cout << "New AP MAC: " << info->mac << " SSID: " << beacon->ssid() << " RSSI: " << (int)info->rssi << std::endl;
+//		std::cout << "New AP MAC: " << info->mac << " SSID: " << beacon->ssid() << " RSSI: " << (int)info->rssi <<
+//			 " Channel: " << (int)beacon->ds_parameter_set() << std::endl;
+//TODO: send to proper place
+//TODO: use proper id
+			ApEventMessage msg(EventMessage::AP_ADD, 1, info->mac,
+				(int)info->rssi, (int)beacon->ds_parameter_set(), beacon->ssid());
+			std::cout << msg.serialize() << std::endl;
 
 	}
 	ap_set.insert(info->mac);
