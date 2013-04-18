@@ -4,20 +4,17 @@
 EventMessage::EventMessage(EventType _type, int _origin_id, Tins::Dot11::address_type _mac) :
         type(_type), origin_id(_origin_id), mac(_mac)
 {
+}
+
+void EventMessage::serialize_start()
+{
         root = json_object();
         json_object_set_new(root, "event_type", json_integer(type));
         json_object_set_new(root, "origin_id", json_integer(origin_id));
         json_object_set_new(root, "mac", json_string(mac.to_string().c_str()));
 }
 
-EventMessage::~EventMessage()
-{
-        if(root)
-                json_decref(root);
-
-}
-
-std::string EventMessage::serialize()
+std::string EventMessage::serialize_end()
 {
         std::string ret;
         if (root) {
@@ -29,6 +26,7 @@ std::string EventMessage::serialize()
                         ret = std::string(dump);
                         free(dump);
                 }
+                json_decref(root);
         }
         return ret;
 }
@@ -38,6 +36,11 @@ ClientEventMessage::ClientEventMessage(EventType _type, int _origin_id, Tins::Do
         rssi(_rssi), prev_rssi(_prev_rssi), ssids(_ssids),
         EventMessage(_type, _origin_id, _mac)
 {
+}
+
+std::string ClientEventMessage::serialize()
+{
+        EventMessage::serialize_start();
         json_object_set_new(root, "rssi", json_integer(rssi));
         json_object_set_new(root, "prev_rssi", json_integer(prev_rssi));
         json_t *ssid_obj = json_array();
@@ -48,6 +51,7 @@ ClientEventMessage::ClientEventMessage(EventType _type, int _origin_id, Tins::Do
                 it++;
         }
         json_object_set_new(root, "probed_ssids", ssid_obj);
+        return EventMessage::serialize_end();
 }
 
 ApEventMessage::ApEventMessage(EventType _type, int _origin_id, Tins::Dot11::address_type _mac,
@@ -55,8 +59,14 @@ ApEventMessage::ApEventMessage(EventType _type, int _origin_id, Tins::Dot11::add
         rssi(_rssi), channel(_channel), ssid(_ssid),
         EventMessage(_type, _origin_id, _mac)
 {
+}
+
+std::string ApEventMessage::serialize()
+{
+        EventMessage::serialize_start();
         json_object_set_new(root, "rssi", json_integer(rssi));
         json_object_set_new(root, "channel", json_integer(channel));
         json_object_set_new(root, "ssid", json_string(ssid.c_str()));
+        return EventMessage::serialize_end();
 }
 
