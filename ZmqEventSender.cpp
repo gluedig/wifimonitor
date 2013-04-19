@@ -24,12 +24,11 @@ bool ZmqEventSender::sendMessage(EventMessage &msg)
 {
         if (zmq_pub_sock) {
                 int rc;
-                char *buf;
                 std::string msg_str = msg.serialize();
-                buf = (char *)malloc(strlen(msg_str.c_str())+1);
-                memcpy(buf, msg_str.c_str(), strlen(msg_str.c_str()+1));
-
-                zframe_t *frame = zframe_new (buf, strlen(buf));
+                size_t msg_size = msg_str.size();
+                char *buf = (char *)malloc(msg_size);
+                memcpy(buf, msg_str.c_str(), msg_size);
+                zframe_t *frame = zframe_new (buf, msg_size);
                 rc = zframe_send (&frame, zmq_pub_sock, 0);
                 free(buf);
                 assert (rc == 0);

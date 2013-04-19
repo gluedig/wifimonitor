@@ -5,6 +5,7 @@
 #include <thread>
 #include <chrono>
 #include <atomic>
+#include <mutex>
 
 #include <tins/tins.h>
 
@@ -23,19 +24,13 @@ using namespace Tins;
 #include "ZmqEventSender.h"
 
 struct CleanupFunction {
-                CleanupFunction() : is_terminated(false) {};
-                void cleanup_function(ClientDb *clt_db, ApDb *ap_db) {
-                        while (!is_terminated) {
-                                std::this_thread::sleep_for(std::chrono::seconds(CLEANUP_PERIOD));
-                                clt_db->cleanup(CLEANUP_MAXAGE);
-                                ap_db->cleanup(CLEANUP_MAXAGE);
-                        }
+        void cleanup_function(ClientDb *clt_db, ApDb *ap_db) {
+                while (1) {
+                        std::this_thread::sleep_for(std::chrono::seconds(CLEANUP_PERIOD));
+                        clt_db->cleanup(CLEANUP_MAXAGE);
+                        ap_db->cleanup(CLEANUP_MAXAGE);
                 }
-                void terminate() {
-                        is_terminated = true;
-                }
-        private:
-                std::atomic_bool is_terminated;
+        }
 };
 
 
@@ -54,7 +49,6 @@ static int ignored;
 
 void terminate_function()
 {
-        cf->terminate();
         delete cf;
 
         for (std::vector<Parser *>::iterator it = parsers.begin() ; it != parsers.end(); ++it) {
