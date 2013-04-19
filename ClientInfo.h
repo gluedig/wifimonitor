@@ -15,16 +15,19 @@ class ClientInfo
                 Tins::Dot11::address_type mac;
                 Tins::PDU::PDUType pdu_type;
                 std::string asked_SSID;
+                int channel;
 
 
-                ClientInfo() : rssi(0), interesting(false) {};
+                ClientInfo() : rssi(0), channel(0), interesting(false) {};
 
                 friend std::ostream &operator<<(std::ostream &os, ClientInfo &obj) {
                         // write obj to stream
                         os << "[" << obj.timestamp.seconds() << "." << obj.timestamp.microseconds() << "] ";
                         os << "PDUtype: "<< obj.pdu_type << " MAC: " << obj.mac << " RSSI: " << std::dec << (int)obj.rssi;
                         if (obj.asked_SSID.size())
-                                os << " Asked SSID: " << obj.asked_SSID;
+                                os << " SSID: " << obj.asked_SSID;
+                        if (obj.channel)
+                                os << " Channel: " << obj.channel;
                         os <<  std::endl;
                         return os;
                 };

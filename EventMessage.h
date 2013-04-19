@@ -12,6 +12,8 @@ class EventMessage
                         CLIENT_REMOVE,
                         CLIENT_UPDATE,
                         AP_ADD,
+                        AP_REMOVE,
+                        AP_UPDATE,
                 };
 
                 EventMessage(EventType type, int origin_id, Tins::Dot11::address_type mac);

@@ -2,68 +2,26 @@
 #include "EventMessage.h"
 using namespace Tins;
 
-Dot11Parser::~Dot11Parser()
+Dot11ApParser::Dot11ApParser(ApDb *_db) : db(_db)
 {
-        ap_set.clear();
 }
 
-void Dot11Parser::parseBeacon(ClientInfo *info, const PDU &pdu)
+bool Dot11ApParser::parseBeacon(ClientInfo *info, const PDU &pdu)
 {
         const Dot11Beacon *beacon = pdu.find_pdu<Dot11Beacon>();
         if (!beacon)
-                return;
+                return false;
 
         info->mac = beacon->addr3();
-        if (!ap_set.count(info->mac)) {
-//		std::cout << "New AP MAC: " << info->mac << " SSID: " << beacon->ssid() << " RSSI: " << (int)info->rssi <<
-//			 " Channel: " << (int)beacon->ds_parameter_set() << std::endl;
-//TODO: send to proper place
-//TODO: use proper id
-                ApEventMessage msg(EventMessage::AP_ADD, 1, info->mac,
-                                   (int)info->rssi, (int)beacon->ds_parameter_set(), beacon->ssid());
-                std::cout << msg.serialize() << std::endl;
-
-        }
-        ap_set.insert(info->mac);
-}
-
-void Dot11Parser::parseRTS(ClientInfo *info, const PDU &pdu)
-{
-        const Dot11RTS *rts = pdu.find_pdu<Dot11RTS>();
-        if (!rts)
-                return;
-
-        info->mac = rts->target_addr();
-        if (ap_set.count(info->mac))
-                return;
+        info->asked_SSID = beacon->ssid();
+        info->channel = (int)beacon->ds_parameter_set();
         info->interesting = true;
+        db->newApEvent(info);
 
+        return true;
 }
 
-void Dot11Parser::parseData(ClientInfo *info, const PDU &pdu)
-{
-        const Dot11Data *data = pdu.find_pdu<Dot11Data>();
-        if (!data)
-                return;
-
-        info->mac = data->addr3();
-        if (ap_set.count(info->mac))
-                return;
-        info->interesting = true;
-
-}
-
-void Dot11Parser::parseProbeReq(ClientInfo *info, const PDU &pdu)
-{
-        const Dot11ProbeRequest *probe = pdu.find_pdu<Dot11ProbeRequest>();
-        if (!probe)
-                return;
-        info->mac = probe->addr2();
-        info->interesting = true;
-        info->asked_SSID = probe->ssid();
-}
-
-bool Dot11Parser::parse(ClientInfo *info, const PDU &pdu)
+bool Dot11ApParser::parse(ClientInfo *info, const PDU &pdu)
 {
         const Dot11 *dot11 = pdu.find_pdu<Dot11>();
         if (!dot11)
@@ -79,25 +37,88 @@ bool Dot11Parser::parse(ClientInfo *info, const PDU &pdu)
 
         switch (pdu_type) {
                 case PDU::DOT11_BEACON:
-                        parseBeacon(info, pdu);
-                        break;
+                        return parseBeacon(info, pdu);
+                default:
+                        return true;
+        }
+}
 
+Dot11StaParser::Dot11StaParser(ClientDb *_db, ApDb *_ap_db) : db(_db), ap_db(_ap_db)
+{
+}
+
+bool Dot11StaParser::parseRTS(ClientInfo *info, const PDU &pdu)
+{
+        const Dot11RTS *rts = pdu.find_pdu<Dot11RTS>();
+        if (!rts)
+                return false;
+
+        info->mac = rts->target_addr();
+        if(ap_db && ap_db->inDb(info->mac))
+                return false;
+        info->interesting = true;
+        db->newClientEvent(info);
+
+        return true;
+}
+
+bool Dot11StaParser::parseData(ClientInfo *info, const PDU &pdu)
+{
+        const Dot11Data *data = pdu.find_pdu<Dot11Data>();
+        if (!data)
+                return false;
+
+        info->mac = data->addr3();
+        if(ap_db && ap_db->inDb(info->mac))
+                return false;
+        info->interesting = true;
+        db->newClientEvent(info);
+
+        return true;
+}
+
+bool Dot11StaParser::parseProbeReq(ClientInfo *info, const PDU &pdu)
+{
+        const Dot11ProbeRequest *probe = pdu.find_pdu<Dot11ProbeRequest>();
+        if (!probe)
+                return false;
+
+        info->mac = probe->addr2();
+        if(ap_db && ap_db->inDb(info->mac))
+                return false;
+        info->asked_SSID = probe->ssid();
+        info->interesting = true;
+        db->newClientEvent(info);
+
+        return true;
+}
+
+
+bool Dot11StaParser::parse(ClientInfo *info, const PDU &pdu)
+{
+        const Dot11 *dot11 = pdu.find_pdu<Dot11>();
+        if (!dot11)
+                return false;
+
+        PDU::PDUType pdu_type = dot11->pdu_type();
+        info->pdu_type = pdu_type;
+
+        /* ignore frames from DS */
+        if (dot11->from_ds())
+                return false;
+
+        switch (pdu_type) {
                 case PDU::DOT11_RTS:
-                        parseRTS(info, pdu);
-                        break;
+                        return parseRTS(info, pdu);
 
                 case PDU::DOT11_DATA:
                 case PDU::DOT11_QOS_DATA:
-                        parseData(info, pdu);
-                        break;
+                        return parseData(info, pdu);
 
                 case PDU::DOT11_PROBE_REQ:
-                        parseProbeReq(info, pdu);
-                        break;
+                        return parseProbeReq(info, pdu);
 
                 default:
-                        break;
+                        return true;
         }
-
-        return true;
 }

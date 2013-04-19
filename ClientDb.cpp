@@ -26,21 +26,18 @@ bool ClientDb::newClientEvent(ClientInfo *info)
 
                 if (info->asked_SSID.size() && !data.asked_ssids.count(info->asked_SSID)) {
                         data.asked_ssids.insert(info->asked_SSID);
-//			std::cout << "New probed SSID: " << info->asked_SSID << " " << data << std::endl;
                         send_update = true;
                 }
 
                 /* trigger if average RSSI changed */
                 if ((data.avg_rssi != prev_avg) &&
                     (data.avg_rssi > prev_avg+RSSI_HIST) || (data.avg_rssi < prev_avg-RSSI_HIST)) {
-//			std::cout << "RSSI changed Prev RSSI: " << prev_avg << " " << data << std::endl;
                         send_update = true;
                 }
 
                 db[info->mac] = data;
 
                 if (send_update) {
-//TODO: send to proper place
 //TODO: use proper id
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE, 1, data.mac,
                                                data.avg_rssi, data.last_rssi, data.asked_ssids);
@@ -59,9 +56,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 added++;
                 db.insert(std::pair<Tins::Dot11::address_type, ClientData>(info->mac, new_data));
 
-//TODO: send to proper place
 //TODO: use proper id
-//		std::cout << "New " << new_data << std::endl;
                 ClientEventMessage msg(EventMessage::CLIENT_ADD, 1, new_data.mac,
                                        new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
                 std::cout << msg.serialize() << std::endl;
@@ -80,7 +75,6 @@ void ClientDb::cleanup(int maxage)
                 it->second.age++;
                 if (it->second.age > maxage) {
 //			std::cout << "Removing " << it->second << std::endl;
-//TODO: send to proper place
 //TODO: use proper id
                         ClientEventMessage msg(EventMessage::CLIENT_REMOVE, 1, it->second.mac,
                                                it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
@@ -104,8 +98,8 @@ ClientDb::ClientDb(EventSender *_sender) : sender(_sender), added(0), removed(0)
 
 std::ostream &operator<<(std::ostream &os, const ClientDb &obj)
 {
-        const std::map<Tins::Dot11::address_type, ClientData> *db = &(obj.db);
-        std::map<Tins::Dot11::address_type, ClientData>::const_iterator it;
+        const std::unordered_map<Tins::Dot11::address_type, ClientData> *db = &(obj.db);
+        std::unordered_map<Tins::Dot11::address_type, ClientData>::const_iterator it;
 
         os << "ClientDb dump, elements: " << db->size() << " added: " << obj.added << " removed: " << obj.removed << std::endl;
         for ( it = db->begin(); it != db->end(); ++it) {

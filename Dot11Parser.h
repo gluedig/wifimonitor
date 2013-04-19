@@ -4,20 +4,28 @@
 #include <map>
 #include <set>
 #include "Parser.h"
+#include "ClientDb.h"
+#include "ApDb.h"
 
-
-class Dot11Parser : public Parser
+class Dot11StaParser : public Parser
 {
-                std::set<Tins::Dot11::address_type> ap_set;
-                void parseBeacon(ClientInfo *info, const Tins::PDU &pdu);
-                void parseRTS(ClientInfo *info, const Tins::PDU &pdu);
-                void parseData(ClientInfo *info, const Tins::PDU &pdu);
-                void parseProbeReq(ClientInfo *info, const Tins::PDU &pdu);
+                bool parseRTS(ClientInfo *info, const Tins::PDU &pdu);
+                bool parseData(ClientInfo *info, const Tins::PDU &pdu);
+                bool parseProbeReq(ClientInfo *info, const Tins::PDU &pdu);
+                ClientDb *db;
+                ApDb *ap_db;
         public:
                 virtual bool parse(ClientInfo *info, const Tins::PDU &pdu);
-                virtual ~Dot11Parser();
+                Dot11StaParser(ClientDb *db, ApDb *apdb);
+};
 
-
+class Dot11ApParser : public Parser
+{
+                bool parseBeacon(ClientInfo *info, const Tins::PDU &pdu);
+                ApDb *db;
+        public:
+                virtual bool parse(ClientInfo *info, const Tins::PDU &pdu);
+                Dot11ApParser(ApDb *db);
 };
 
 #endif

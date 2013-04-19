@@ -19,14 +19,16 @@ using namespace Tins;
 #include "RadioTapParser.h"
 #include "Dot11Parser.h"
 #include "ClientDb.h"
+#include "ApDb.h"
 #include "ZmqEventSender.h"
 
 struct CleanupFunction {
                 CleanupFunction() : is_terminated(false) {};
-                void cleanup_function(ClientDb *db) {
+                void cleanup_function(ClientDb *clt_db, ApDb *ap_db) {
                         while (!is_terminated) {
                                 std::this_thread::sleep_for(std::chrono::seconds(CLEANUP_PERIOD));
-                                db->cleanup(CLEANUP_MAXAGE);
+                                clt_db->cleanup(CLEANUP_MAXAGE);
+                                ap_db->cleanup(CLEANUP_MAXAGE);
                         }
                 }
                 void terminate() {
@@ -43,6 +45,7 @@ std::once_flag terminate_flag;
 
 std::vector<Parser *> parsers;
 ClientDb *clientdb;
+ApDb *apdb;
 
 ZmqEventSender *sender;
 
@@ -61,7 +64,11 @@ void terminate_function()
 
         std::cerr << "Finishing, total packets: " << count << " ignored: " << ignored << std::endl;
         std::cerr << *clientdb << std::endl;
+        std::cerr << *apdb << std::endl;
+
+
         delete clientdb;
+        delete apdb;
         delete sender;
 }
 void terminate_handler(int sig)
@@ -83,11 +90,10 @@ bool parse(const RefPacket &ref)
                         break;
         }
 
-        if (info.interesting) {
-                clientdb->newClientEvent(&info);
-        } else {
+        if (!info.interesting) {
                 ignored++;
         }
+
 
         return true;
 }
@@ -106,16 +112,17 @@ int main(int argc, char **argv)
                 exit(1);
 
         clientdb = new ClientDb(sender);
+        apdb = new ApDb(sender);
 
         cf = new CleanupFunction();
-        cleanup_thread = new std::thread(std::bind(&CleanupFunction::cleanup_function, std::ref(cf), clientdb));
+        cleanup_thread = new std::thread(std::bind(&CleanupFunction::cleanup_function, std::ref(cf), clientdb, apdb));
 
         parsers.push_back(new RadioTapParser());
-        parsers.push_back(new Dot11Parser());
+        parsers.push_back(new Dot11ApParser(apdb));
+        parsers.push_back(new Dot11StaParser(clientdb, apdb));
 
         /* Ctrl-C handler */
         signal(SIGINT, terminate_handler);
-
 
         Sniffer sniffer(std::string(monitor_dev), 1500, true);
         sniffer.sniff_loop(parse);

@@ -1,7 +1,7 @@
 #ifndef _CLIENTDB_H_
 #define _CLIENTDB_H_
 
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <string>
 #include <iostream>
@@ -11,6 +11,7 @@
 
 #include "ClientInfo.h"
 #include "EventSender.h"
+#include "TinsHwAddrHash.h"
 
 struct ClientData {
         ClientData() : age(0), last_rssi(0), avg_rssi(0) {};
@@ -27,7 +28,7 @@ struct ClientData {
 
 class ClientDb
 {
-                std::map<Tins::Dot11::address_type, ClientData> db;
+                std::unordered_map<Tins::Dot11::address_type, ClientData> db;
                 Tins::Dot11::address_type null_address;
                 std::mutex db_mutex;
                 int added, removed;
