@@ -19,6 +19,7 @@ using namespace Tins;
 #include "RadioTapParser.h"
 #include "Dot11Parser.h"
 #include "ClientDb.h"
+#include "ZmqEventSender.h"
 
 struct CleanupFunction {
                 CleanupFunction() : is_terminated(false) {};
@@ -43,6 +44,8 @@ std::once_flag terminate_flag;
 std::vector<Parser *> parsers;
 ClientDb *clientdb;
 
+ZmqEventSender *sender;
+
 static int count;
 static int ignored;
 
@@ -59,7 +62,7 @@ void terminate_function()
         std::cerr << "Finishing, total packets: " << count << " ignored: " << ignored << std::endl;
         std::cerr << *clientdb << std::endl;
         delete clientdb;
-
+        delete sender;
 }
 void terminate_handler(int sig)
 {
@@ -98,16 +101,20 @@ int main(int argc, char **argv)
                 exit(1);
         monitor_dev = argv[1];
 
-        /* Ctrl-C handler */
-        signal(SIGINT, terminate_handler);
+        sender = new ZmqEventSender();
+        if (!sender->bind("tcp://127.0.0.1:5555"))
+                exit(1);
 
-        clientdb = new ClientDb();
+        clientdb = new ClientDb(sender);
 
         cf = new CleanupFunction();
         cleanup_thread = new std::thread(std::bind(&CleanupFunction::cleanup_function, std::ref(cf), clientdb));
 
         parsers.push_back(new RadioTapParser());
         parsers.push_back(new Dot11Parser());
+
+        /* Ctrl-C handler */
+        signal(SIGINT, terminate_handler);
 
 
         Sniffer sniffer(std::string(monitor_dev), 1500, true);

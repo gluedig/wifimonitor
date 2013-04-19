@@ -10,6 +10,7 @@
 #include <tins/tins.h>
 
 #include "ClientInfo.h"
+#include "EventSender.h"
 
 struct ClientData {
         ClientData() : age(0), last_rssi(0), avg_rssi(0) {};
@@ -30,10 +31,11 @@ class ClientDb
                 Tins::Dot11::address_type null_address;
                 std::mutex db_mutex;
                 int added, removed;
+                EventSender *sender;
         public:
                 bool newClientEvent(ClientInfo *info);
                 friend std::ostream &operator<<(std::ostream &os, const ClientDb &obj);
                 void cleanup(int maxage);
-                ClientDb();
+                ClientDb(EventSender *sender);
 };
 #endif

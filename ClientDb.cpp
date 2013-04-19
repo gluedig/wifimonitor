@@ -45,6 +45,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE, 1, data.mac,
                                                data.avg_rssi, data.last_rssi, data.asked_ssids);
                         std::cout << msg.serialize() << std::endl;
+                        sender->sendMessage(msg);
                 }
         } else {
                 ClientData new_data;
@@ -64,6 +65,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 ClientEventMessage msg(EventMessage::CLIENT_ADD, 1, new_data.mac,
                                        new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
                 std::cout << msg.serialize() << std::endl;
+                sender->sendMessage(msg);
         }
         db_mutex.unlock();
 
@@ -83,6 +85,7 @@ void ClientDb::cleanup(int maxage)
                         ClientEventMessage msg(EventMessage::CLIENT_REMOVE, 1, it->second.mac,
                                                it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
                         std::cout << msg.serialize() << std::endl;
+                        sender->sendMessage(msg);
 
                         removed++;
                         db.erase(it++);
@@ -94,7 +97,7 @@ void ClientDb::cleanup(int maxage)
         db_mutex.unlock();
 }
 
-ClientDb::ClientDb() : added(0), removed(0)
+ClientDb::ClientDb(EventSender *_sender) : sender(_sender), added(0), removed(0)
 {
 
 }
