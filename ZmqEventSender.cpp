@@ -17,7 +17,15 @@ int ZmqEventSender::bind(std::string address)
 {
         zmq_pub_sock = zsocket_new(ctx, ZMQ_PUB);
         assert(zmq_pub_sock);
-        return zsocket_bind (zmq_pub_sock, address.c_str());
+        int port = zsocket_bind (zmq_pub_sock, address.c_str());
+        assert(port);
+        char sock_endpoint[256];
+        int endpoint_size = sizeof(sock_endpoint);
+        zmq_getsockopt(zmq_pub_socket, ZMQ_LAST_ENDPOINT, sock_endpoint, endpoint_size);
+        std::cerr << "ZmqEventSender bound to: " << address << " [";
+        std::cerr << sock_endpoint << ":"<< port << std::endl;
+
+        return port;
 }
 
 bool ZmqEventSender::sendMessage(EventMessage &msg)
