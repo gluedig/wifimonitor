@@ -14,8 +14,10 @@ ZmqEventSender::~ZmqEventSender()
                 zbeacon_silence(beacon_ctx);
                 zbeacon_destroy(&beacon_ctx);
         }
-        if(zmq_pub_sock)
+        if(zmq_pub_sock) {
+                zsocket_disconnect(zmq_pub_sock, socket_endpoint.c_str());
                 zsocket_destroy(ctx, zmq_pub_sock);
+        }
         zctx_destroy(&ctx);
 }
 
@@ -28,7 +30,8 @@ int ZmqEventSender::bind(std::string address)
         char sock_endpoint[256];
         size_t endpoint_size = sizeof(sock_endpoint);
         zmq_getsockopt(zmq_pub_sock, ZMQ_LAST_ENDPOINT, sock_endpoint, &endpoint_size);
-        std::cerr << "ZmqEventSender bound to: " << sock_endpoint << " [" << address << "]" << std::endl;
+        socket_endpoint = std::string(sock_endpoint);
+        std::cerr << "ZmqEventSender bound to: " << socket_endpoint << " [" << address << "]" << std::endl;
 
         char beacon[256];
         sprintf(beacon, "EVENT_SRC:%s", sock_endpoint);

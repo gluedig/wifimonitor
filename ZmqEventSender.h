@@ -18,5 +18,6 @@ class ZmqEventSender : public EventSender
                 zctx_t *ctx;
                 void *zmq_pub_sock;
                 zbeacon_t *beacon_ctx;
+                std::string socket_endpoint;
 };
 #endif
