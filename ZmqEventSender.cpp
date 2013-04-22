@@ -10,8 +10,10 @@ ZmqEventSender::ZmqEventSender()
 
 ZmqEventSender::~ZmqEventSender()
 {
-        if (beacon_ctx)
+        if (beacon_ctx) {
+                zbeacon_silence(beacon_ctx);
                 zbeacon_destroy(&beacon_ctx);
+        }
         if(zmq_pub_sock)
                 zsocket_destroy(ctx, zmq_pub_sock);
         zctx_destroy(&ctx);
