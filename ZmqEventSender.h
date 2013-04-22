@@ -3,6 +3,9 @@
 #include <czmq.h>
 #include "EventSender.h"
 
+#define BEACON_PORT 5555
+#define BEACON_INTERVAL 5000
+
 class ZmqEventSender : public EventSender
 {
         public:
@@ -14,5 +17,6 @@ class ZmqEventSender : public EventSender
         private:
                 zctx_t *ctx;
                 void *zmq_pub_sock;
+                zbeacon_t *beacon_ctx;
 };
 #endif

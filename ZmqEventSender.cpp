@@ -4,10 +4,14 @@
 ZmqEventSender::ZmqEventSender()
 {
         ctx = zctx_new();
+        beacon_ctx = zbeacon_new(BEACON_PORT);
+        zbeacon_set_interval(beacon_ctx, BEACON_INTERVAL);
 }
 
 ZmqEventSender::~ZmqEventSender()
 {
+        if (beacon_ctx)
+                zbeacon_destroy(&beacon_ctx);
         if(zmq_pub_sock)
                 zsocket_destroy(ctx, zmq_pub_sock);
         zctx_destroy(&ctx);
@@ -20,10 +24,15 @@ int ZmqEventSender::bind(std::string address)
         int port = zsocket_bind (zmq_pub_sock, address.c_str());
         assert(port);
         char sock_endpoint[256];
-        int endpoint_size = sizeof(sock_endpoint);
-        zmq_getsockopt(zmq_pub_socket, ZMQ_LAST_ENDPOINT, sock_endpoint, endpoint_size);
-        std::cerr << "ZmqEventSender bound to: " << address << " [";
-        std::cerr << sock_endpoint << ":"<< port << std::endl;
+        size_t endpoint_size = sizeof(sock_endpoint);
+        zmq_getsockopt(zmq_pub_sock, ZMQ_LAST_ENDPOINT, sock_endpoint, &endpoint_size);
+        std::cerr << "ZmqEventSender bound to: " << sock_endpoint << " [" << address << "]" << std::endl;
+
+        char beacon[256];
+        sprintf(beacon, "EVENT_SRC:%s", sock_endpoint);
+        std::cerr << "ZmqEventSender sending EVENT_SRC beacons from port ";
+        std::cerr << BEACON_PORT << " every " << BEACON_INTERVAL << " ms <" << beacon << ">\n";
+        zbeacon_publish(beacon_ctx, (byte *)beacon, strlen(beacon));
 
         return port;
 }

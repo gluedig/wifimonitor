@@ -96,13 +96,18 @@ bool parse(const RefPacket &ref)
 int main(int argc, char **argv)
 {
         char *monitor_dev;
+        char report_dev[256];
 
-        if (argc != 2)
+        if (argc != 3) {
+                std::cerr << "Usage: " << argv[0] << " <monitor device> <report device>" << std::endl;
                 exit(1);
+        }
+
         monitor_dev = argv[1];
+        sprintf(report_dev, "tcp://%s:*", argv[2]);
 
         sender = new ZmqEventSender();
-        if (!sender->bind("tcp://127.0.0.1:5555"))
+        if (!sender->bind(report_dev))
                 exit(1);
 
         clientdb = new ClientDb(sender);
