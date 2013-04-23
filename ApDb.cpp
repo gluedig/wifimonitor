@@ -27,8 +27,7 @@ bool ApDb::newApEvent(ClientInfo *info)
                 db[info->mac] = data;
 
                 if (send_update) {
-//TODO: use proper id
-                        ApEventMessage msg(EventMessage::AP_UPDATE, 1, data.mac,
+                        ApEventMessage msg(EventMessage::AP_UPDATE, data.mac,
                                            data.rssi, data.channel, data.ssid);
                         std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);
@@ -47,8 +46,7 @@ bool ApDb::newApEvent(ClientInfo *info)
 
                 added++;
                 db.insert(std::pair<Tins::Dot11::address_type, ApData>(info->mac, data));
-//TODO: use proper id
-                ApEventMessage msg(EventMessage::AP_ADD, 1, data.mac,
+                ApEventMessage msg(EventMessage::AP_ADD, data.mac,
                                    data.rssi, data.channel, data.ssid);
                 std::cout << msg.serialize() << std::endl;
                 sender->sendMessage(msg);
@@ -65,8 +63,7 @@ void ApDb::cleanup(int maxage)
         while (it != db.end()) {
                 it->second.age++;
                 if (it->second.age > maxage) {
-//TODO: use proper id
-                        ApEventMessage msg(EventMessage::AP_REMOVE, 1, it->second.mac,
+                        ApEventMessage msg(EventMessage::AP_REMOVE, it->second.mac,
                                            it->second.rssi, it->second.channel, it->second.ssid);
                         std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);

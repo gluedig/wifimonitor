@@ -38,8 +38,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 db[info->mac] = data;
 
                 if (send_update) {
-//TODO: use proper id
-                        ClientEventMessage msg(EventMessage::CLIENT_UPDATE, 1, data.mac,
+                        ClientEventMessage msg(EventMessage::CLIENT_UPDATE, data.mac,
                                                data.avg_rssi, data.last_rssi, data.asked_ssids);
                         std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);
@@ -56,8 +55,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 added++;
                 db.insert(std::pair<Tins::Dot11::address_type, ClientData>(info->mac, new_data));
 
-//TODO: use proper id
-                ClientEventMessage msg(EventMessage::CLIENT_ADD, 1, new_data.mac,
+                ClientEventMessage msg(EventMessage::CLIENT_ADD, new_data.mac,
                                        new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
                 std::cout << msg.serialize() << std::endl;
                 sender->sendMessage(msg);
@@ -74,9 +72,7 @@ void ClientDb::cleanup(int maxage)
         while (it != db.end()) {
                 it->second.age++;
                 if (it->second.age > maxage) {
-//			std::cout << "Removing " << it->second << std::endl;
-//TODO: use proper id
-                        ClientEventMessage msg(EventMessage::CLIENT_REMOVE, 1, it->second.mac,
+                        ClientEventMessage msg(EventMessage::CLIENT_REMOVE, it->second.mac,
                                                it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
                         std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);

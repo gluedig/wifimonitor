@@ -1,1 +1,1 @@
-sudo valgrind --log-file=val.log --leak-check=full ./monitor mon0
+sudo valgrind --log-file=val.log --leak-check=full ./monitor mon0 eth0

@@ -16,13 +16,12 @@ class EventMessage
                         AP_UPDATE,
                 };
 
-                EventMessage(EventType type, int origin_id, Tins::Dot11::address_type mac);
+                EventMessage(EventType type, Tins::Dot11::address_type mac);
                 virtual std::string serialize() = 0;
         protected:
                 void serialize_start();
                 std::string serialize_end();
                 EventType type;
-                int origin_id;
                 Tins::Dot11::address_type mac;
 
                 json_t *root;
@@ -31,7 +30,7 @@ class EventMessage
 class ClientEventMessage : public EventMessage
 {
         public:
-                ClientEventMessage(EventType type, int origin_id, Tins::Dot11::address_type mac,
+                ClientEventMessage(EventType type, Tins::Dot11::address_type mac,
                                    int rssi, int prev_rssi, std::set<std::string> ssids);
                 virtual std::string serialize();
         protected:
@@ -44,7 +43,7 @@ class ClientEventMessage : public EventMessage
 class ApEventMessage : public EventMessage
 {
         public:
-                ApEventMessage(EventType type, int origin_id, Tins::Dot11::address_type mac,
+                ApEventMessage(EventType type, Tins::Dot11::address_type mac,
                                int rssi, int channel, std::string ssid);
                 virtual std::string serialize();
         protected:

@@ -1,8 +1,9 @@
 #include <set>
 #include "EventMessage.h"
+#include "MonitorId.h"
 
-EventMessage::EventMessage(EventType _type, int _origin_id, Tins::Dot11::address_type _mac) :
-        type(_type), origin_id(_origin_id), mac(_mac)
+EventMessage::EventMessage(EventType _type, Tins::Dot11::address_type _mac) :
+        type(_type), mac(_mac)
 {
 }
 
@@ -10,7 +11,7 @@ void EventMessage::serialize_start()
 {
         root = json_object();
         json_object_set_new(root, "event_type", json_integer(type));
-        json_object_set_new(root, "origin_id", json_integer(origin_id));
+        json_object_set_new(root, "origin_id", json_integer(MonitorId::getInstance().getId()));
         json_object_set_new(root, "mac", json_string(mac.to_string().c_str()));
 }
 
@@ -31,10 +32,10 @@ std::string EventMessage::serialize_end()
         return ret;
 }
 
-ClientEventMessage::ClientEventMessage(EventType _type, int _origin_id, Tins::Dot11::address_type _mac,
+ClientEventMessage::ClientEventMessage(EventType _type, Tins::Dot11::address_type _mac,
                                        int _rssi, int _prev_rssi, std::set<std::string> _ssids) :
         rssi(_rssi), prev_rssi(_prev_rssi), ssids(_ssids),
-        EventMessage(_type, _origin_id, _mac)
+        EventMessage(_type, _mac)
 {
 }
 
@@ -54,10 +55,10 @@ std::string ClientEventMessage::serialize()
         return EventMessage::serialize_end();
 }
 
-ApEventMessage::ApEventMessage(EventType _type, int _origin_id, Tins::Dot11::address_type _mac,
+ApEventMessage::ApEventMessage(EventType _type, Tins::Dot11::address_type _mac,
                                int _rssi, int _channel,  std::string _ssid) :
         rssi(_rssi), channel(_channel), ssid(_ssid),
-        EventMessage(_type, _origin_id, _mac)
+        EventMessage(_type, _mac)
 {
 }
 
