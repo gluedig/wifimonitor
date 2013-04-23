@@ -23,6 +23,7 @@ class EventMessage
                 std::string serialize_end();
                 EventType type;
                 Tins::Dot11::address_type mac;
+                unsigned long int timestamp;
 
                 json_t *root;
 };

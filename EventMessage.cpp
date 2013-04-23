@@ -1,18 +1,22 @@
 #include <set>
+#include <chrono>
 #include "EventMessage.h"
 #include "MonitorId.h"
 
 EventMessage::EventMessage(EventType _type, Tins::Dot11::address_type _mac) :
         type(_type), mac(_mac)
 {
+        std::chrono::time_point<std::chrono::high_resolution_clock> tp = std::chrono::system_clock::now();
+        timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
 }
 
 void EventMessage::serialize_start()
 {
         root = json_object();
-        json_object_set_new(root, "event_type", json_integer(type));
+        json_object_set_new(root, "timestamp", json_integer(timestamp));
         json_object_set_new(root, "origin_id", json_integer(MonitorId::getInstance().getId()));
         json_object_set_new(root, "mac", json_string(mac.to_string().c_str()));
+        json_object_set_new(root, "event_type", json_integer(type));
 }
 
 std::string EventMessage::serialize_end()
