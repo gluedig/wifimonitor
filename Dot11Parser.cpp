@@ -77,6 +77,20 @@ bool Dot11StaParser::parseData(ClientInfo *info, const PDU &pdu)
         return true;
 }
 
+bool Dot11StaParser::parseQosData(ClientInfo *info, const PDU &pdu)
+{
+        const Dot11Data *data = pdu.find_pdu<Dot11Data>();
+        if (!data)
+                return false;
+
+        info->mac = data->addr2();
+        if(ap_db && ap_db->inDb(info->mac))
+                return false;
+        info->interesting = true;
+        db->newClientEvent(info);
+
+        return true;
+}
 bool Dot11StaParser::parseProbeReq(ClientInfo *info, const PDU &pdu)
 {
         const Dot11ProbeRequest *probe = pdu.find_pdu<Dot11ProbeRequest>();
@@ -112,8 +126,9 @@ bool Dot11StaParser::parse(ClientInfo *info, const PDU &pdu)
                         return parseRTS(info, pdu);
 
                 case PDU::DOT11_DATA:
-                case PDU::DOT11_QOS_DATA:
                         return parseData(info, pdu);
+                case PDU::DOT11_QOS_DATA:
+                        return parseQosData(info, pdu);
 
                 case PDU::DOT11_PROBE_REQ:
                         return parseProbeReq(info, pdu);

@@ -11,6 +11,7 @@ class Dot11StaParser : public Parser
 {
                 bool parseRTS(ClientInfo *info, const Tins::PDU &pdu);
                 bool parseData(ClientInfo *info, const Tins::PDU &pdu);
+                bool parseQosData(ClientInfo *info, const Tins::PDU &pdu);
                 bool parseProbeReq(ClientInfo *info, const Tins::PDU &pdu);
                 ClientDb *db;
                 ApDb *ap_db;
