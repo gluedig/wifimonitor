@@ -8,10 +8,9 @@
 #include <mutex>
 #include <pthread.h>
 
-
 #include <tins/tins.h>
 
-#define CLEANUP_PERIOD 5
+#define CLEANUP_PERIOD 30
 #define CLEANUP_MAXAGE 4
 
 
@@ -130,7 +129,6 @@ int main(int argc, char **argv)
         cf = new CleanupFunction();
         cleanup_thread_flag = new std::atomic_bool();
         cleanup_thread_flag->store(true);
-
         cleanup_thread = new std::thread(std::bind(&CleanupFunction::cleanup_function, std::ref(cf), clientdb, apdb, cleanup_thread_flag));
 
         parsers.push_back(new RadioTapParser());
