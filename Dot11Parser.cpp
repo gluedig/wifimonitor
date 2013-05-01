@@ -2,6 +2,15 @@
 #include "EventMessage.h"
 using namespace Tins;
 
+static bool isBroadcast(Tins::Dot11::address_type mac)
+{
+        auto first_octet = mac.begin();
+        if ( *first_octet & 0x1)
+                return true;
+        else
+                return false;
+}
+
 Dot11ApParser::Dot11ApParser(ApDb *_db) : db(_db)
 {
 }
@@ -54,6 +63,8 @@ bool Dot11StaParser::parseRTS(ClientInfo *info, const PDU &pdu)
                 return false;
 
         info->mac = rts->target_addr();
+        if (isBroadcast(info->mac))
+                return false;
         if(ap_db && ap_db->inDb(info->mac))
                 return false;
         info->interesting = true;
@@ -69,6 +80,8 @@ bool Dot11StaParser::parseData(ClientInfo *info, const PDU &pdu)
                 return false;
 
         info->mac = data->addr3();
+        if (isBroadcast(info->mac))
+                return false;
         if(ap_db && ap_db->inDb(info->mac))
                 return false;
         info->interesting = true;
@@ -84,9 +97,17 @@ bool Dot11StaParser::parseProbeReq(ClientInfo *info, const PDU &pdu)
                 return false;
 
         info->mac = probe->addr2();
+        if (isBroadcast(info->mac))
+                return false;
         if(ap_db && ap_db->inDb(info->mac))
                 return false;
         info->asked_SSID = probe->ssid();
+        if (info->asked_SSID.size() == 0) {
+                info->asked_SSID = "BROADCAST";
+                std::cerr << "Broadcast ProbeReq\n";
+
+
+        }
         info->interesting = true;
         db->newClientEvent(info);
 
