@@ -116,12 +116,6 @@ bool Dot11StaParser::parseProbeReq(ClientInfo *info, const PDU &pdu)
         if(ap_db && ap_db->inDb(info->mac))
                 return false;
         info->asked_SSID = probe->ssid();
-        if (info->asked_SSID.size() == 0) {
-                info->asked_SSID = "BROADCAST";
-                std::cerr << "Broadcast ProbeReq\n";
-
-
-        }
         info->interesting = true;
         db->newClientEvent(info);
 
