@@ -1,7 +1,8 @@
-CC=gcc
-CXX=g++
+CC?=gcc
+CXX?=g++
 RM=rm -f
-CPPFLAGS=-g -std=c++0x -I /usr/local/include
+INCLUDE_DIR?=/usr/local/include
+CPPFLAGS=-g -std=c++0x -I $(INCLUDE_DIR)
 LDFLAGS=-g
 LDLIBS=-ltins -lpthread -ljansson -lczmq -lzmq
 
