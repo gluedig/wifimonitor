@@ -138,12 +138,13 @@ bool Dot11StaParser::parse(ClientInfo *info, const PDU &pdu)
 
         switch (pdu_type) {
                 case PDU::DOT11_RTS:
-                        return parseRTS(info, pdu);
+                        //return parseRTS(info, pdu);
 
                 case PDU::DOT11_DATA:
-                        return parseData(info, pdu);
+                        //return parseData(info, pdu);
                 case PDU::DOT11_QOS_DATA:
-                        return parseQosData(info, pdu);
+                        //return parseQosData(info, pdu);
+                        break;
 
                 case PDU::DOT11_PROBE_REQ:
                         return parseProbeReq(info, pdu);

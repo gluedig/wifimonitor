@@ -29,7 +29,7 @@ bool ApDb::newApEvent(ClientInfo *info)
                 if (send_update) {
                         ApEventMessage msg(EventMessage::AP_UPDATE, data.mac,
                                            data.rssi, data.channel, data.ssid);
-                        std::cout << msg.serialize() << std::endl;
+//                        std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);
                 }
 
@@ -48,7 +48,7 @@ bool ApDb::newApEvent(ClientInfo *info)
                 db.insert(std::pair<Tins::Dot11::address_type, ApData>(info->mac, data));
                 ApEventMessage msg(EventMessage::AP_ADD, data.mac,
                                    data.rssi, data.channel, data.ssid);
-                std::cout << msg.serialize() << std::endl;
+//                std::cout << msg.serialize() << std::endl;
                 sender->sendMessage(msg);
         }
         db_mutex.unlock();
@@ -65,7 +65,7 @@ void ApDb::cleanup(int maxage)
                 if (it->second.age > maxage) {
                         ApEventMessage msg(EventMessage::AP_REMOVE, it->second.mac,
                                            it->second.rssi, it->second.channel, it->second.ssid);
-                        std::cout << msg.serialize() << std::endl;
+//                        std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);
 
                         removed++;

@@ -3,8 +3,8 @@
 
 #include "EventMessage.h"
 
-#define AVG_COUNT 8
-#define RSSI_HIST 1
+#define AVG_COUNT 1
+#define RSSI_HIST 0
 
 bool ClientDb::newClientEvent(ClientInfo *info)
 {
@@ -14,7 +14,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
         db_mutex.lock();
 
         if (db.count(info->mac)) {
-                bool send_update = false;
+                bool send_update = true;
                 ClientData data = db[info->mac];
                 data.age = 0;
 
@@ -40,8 +40,9 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 if (send_update) {
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE, data.mac,
                                                data.avg_rssi, data.last_rssi, data.asked_ssids);
-                        std::cout << msg.serialize() << std::endl;
+//                        std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);
+                        std::cout << msg << ", update" << std::endl;
                 }
         } else {
                 ClientData new_data;
@@ -57,8 +58,9 @@ bool ClientDb::newClientEvent(ClientInfo *info)
 
                 ClientEventMessage msg(EventMessage::CLIENT_ADD, new_data.mac,
                                        new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
-                std::cout << msg.serialize() << std::endl;
+//                std::cout << msg.serialize() << std::endl;
                 sender->sendMessage(msg);
+                std::cout << msg << ", new" << std::endl;
         }
         db_mutex.unlock();
 
@@ -74,7 +76,7 @@ void ClientDb::cleanup(int maxage)
                 if (it->second.age > maxage) {
                         ClientEventMessage msg(EventMessage::CLIENT_REMOVE, it->second.mac,
                                                it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
-                        std::cout << msg.serialize() << std::endl;
+//                        std::cout << msg.serialize() << std::endl;
                         sender->sendMessage(msg);
 
                         removed++;

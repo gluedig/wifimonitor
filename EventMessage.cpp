@@ -75,3 +75,40 @@ std::string ApEventMessage::serialize()
         return EventMessage::serialize_end();
 }
 
+std::ostream &operator<<(std::ostream &os, const EventMessage &obj)
+{
+        char buf[128] = {0};
+        const time_t time = obj.timestamp / 1000;
+        int ms = obj.timestamp % 1000;
+        strftime(buf, 128, "%F %T", localtime(&time));
+        os << buf << "."
+           << std::setw(3) << std::setfill('0')
+           << ms  << ", " << obj.mac;
+
+        return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const ClientEventMessage &obj)
+{
+        os << static_cast<const EventMessage &>(obj) << ", "
+           << obj.rssi << ",";
+//                << obj.prev_rssi << ", ";
+
+        auto it = obj.ssids.begin();
+        while (it != obj.ssids.end()) {
+                os << " <" << (*it) << ">";
+                it++;
+        }
+
+        return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const ApEventMessage &obj)
+{
+        os << static_cast<const EventMessage &>(obj) << ", "
+           << obj.rssi << ", "
+           << obj.channel << ", "
+           << obj.ssid;
+
+        return os;
+}
