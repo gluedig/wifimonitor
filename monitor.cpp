@@ -24,20 +24,24 @@ using namespace Tins;
 #include "ApDb.h"
 #include "ZmqEventSender.h"
 
-struct CleanupFunction {
-        void cleanup_function(ClientDb *clt_db, ApDb *ap_db, std::atomic_bool *run) {
-                while (run->load()) {
-                        std::this_thread::sleep_for(std::chrono::seconds(CLEANUP_PERIOD));
-                        clt_db->cleanup(CLEANUP_MAXAGE);
-                        ap_db->cleanup(CLEANUP_MAXAGE);
-                }
+struct cleanup_thread_params {
+        ClientDb *clt_db;
+        ApDb *ap_db;
+        std::atomic_bool cleanup_thread_flag;
+} thread_params;
+
+void *cleanup_function(void *param)
+{
+        struct cleanup_thread_params *params = (struct cleanup_thread_params *)param;
+
+        while (params->cleanup_thread_flag.load()) {
+                sleep(CLEANUP_PERIOD);
+                params->clt_db->cleanup(CLEANUP_MAXAGE);
+                params->ap_db->cleanup(CLEANUP_MAXAGE);
         }
-};
+}
 
-
-CleanupFunction *cf;
-std::thread *cleanup_thread;
-std::atomic_bool *cleanup_thread_flag;
+pthread_t cleanup_thread;
 std::once_flag terminate_flag;
 
 std::vector<Parser *> parsers;
@@ -52,12 +56,9 @@ static int ignored;
 void terminate_function()
 {
         std::cerr << "Terminating, waiting for cleanup thread to finish\n";
-        cleanup_thread_flag->store(false);
-        cleanup_thread->join();
-
-        delete cf;
-        delete cleanup_thread;
-        delete cleanup_thread_flag;
+        thread_params.cleanup_thread_flag.store(false);
+        pthread_cancel(cleanup_thread);
+        pthread_join(cleanup_thread, NULL);
 
         for (std::vector<Parser *>::iterator it = parsers.begin() ; it != parsers.end(); ++it) {
                 Parser *parser = *it;
@@ -104,6 +105,7 @@ int main(int argc, char **argv)
 {
         char *monitor_dev;
         char report_dev[256];
+        int ret;
 
         if (argc != 3) {
                 std::cerr << "Usage: " << argv[0] << " <monitor device> <report device>" << std::endl;
@@ -115,8 +117,8 @@ int main(int argc, char **argv)
         sigset_t signal_mask;
         sigemptyset(&signal_mask);
         sigaddset(&signal_mask, SIGINT);
-        int rc = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
-        if (rc != 0)
+        ret = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
+        if (ret != 0)
                 std::cerr << "failed to set sigmask\n";
 
         sender = new ZmqEventSender();
@@ -126,10 +128,12 @@ int main(int argc, char **argv)
         clientdb = new ClientDb(sender);
         apdb = new ApDb(sender);
 
-        cf = new CleanupFunction();
-        cleanup_thread_flag = new std::atomic_bool();
-        cleanup_thread_flag->store(true);
-        cleanup_thread = new std::thread(std::bind(&CleanupFunction::cleanup_function, std::ref(cf), clientdb, apdb, cleanup_thread_flag));
+        thread_params.clt_db = clientdb;
+        thread_params.ap_db = apdb;
+        thread_params.cleanup_thread_flag.store(true);
+        ret = pthread_create(&cleanup_thread, NULL, cleanup_function, (void *)&thread_params);
+        if (ret)
+                std::cerr << "failed to create cleanup thread\n";
 
         parsers.push_back(new RadioTapParser());
         parsers.push_back(new Dot11ApParser(apdb));
@@ -137,8 +141,8 @@ int main(int argc, char **argv)
 
         /* Ctrl-C handler */
         sigaddset(&signal_mask, SIGINT);
-        rc = pthread_sigmask (SIG_UNBLOCK, &signal_mask, NULL);
-        if (rc != 0)
+        ret = pthread_sigmask (SIG_UNBLOCK, &signal_mask, NULL);
+        if (ret != 0)
                 std::cerr << "failed to set sigmask\n";
 
         signal(SIGINT, terminate_handler);
