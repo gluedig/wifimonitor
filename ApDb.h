@@ -10,7 +10,6 @@
 
 #include "ClientInfo.h"
 #include "EventSender.h"
-#include "TinsHwAddrHash.h"
 
 struct ApData {
         ApData() : age(0), rssi(0), channel(0) {};

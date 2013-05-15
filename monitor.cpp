@@ -2,8 +2,6 @@
 #include <exception>
 #include <stdio.h>
 #include <signal.h>
-#include <thread>
-#include <chrono>
 #include <atomic>
 #include <mutex>
 #include <pthread.h>

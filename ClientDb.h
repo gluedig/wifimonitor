@@ -11,7 +11,6 @@
 
 #include "ClientInfo.h"
 #include "EventSender.h"
-#include "TinsHwAddrHash.h"
 
 struct ClientData {
         ClientData() : age(0), last_rssi(0), avg_rssi(0) {};
