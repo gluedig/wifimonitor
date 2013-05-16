@@ -2,9 +2,10 @@ CC?=gcc
 CXX?=g++
 RM=rm -f
 INCLUDE_DIR?=/usr/local/include
+LIB_DIR?=/usr/local/lib
 CPPFLAGS=-g -std=c++0x -I $(INCLUDE_DIR)
-LDFLAGS=-g
-LDLIBS=-ltins -lpthread -ljansson -lczmq -lzmq
+LDFLAGS=-g -L $(LIB_DIR)
+LDLIBS=-lpcap -ltins -lpthread -ljansson -lczmq -lzmq
 
 SRCS = $(wildcard ./*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
