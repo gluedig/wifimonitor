@@ -81,9 +81,9 @@ std::ostream &operator<<(std::ostream &os, const EventMessage &obj)
         const time_t time = obj.timestamp / 1000;
         int ms = obj.timestamp % 1000;
         strftime(buf, 128, "%F %T", localtime(&time));
-        os << buf << "."
-           << std::setw(3) << std::setfill('0')
-           << ms  << ", " << obj.mac;
+        os << buf
+//        << "." << std::setw(3) << std::setfill('0') << ms
+        << ", " << obj.mac;
 
         return os;
 }
