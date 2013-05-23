@@ -45,7 +45,7 @@ std::once_flag terminate_flag;
 std::vector<Parser *> parsers;
 ClientDb *clientdb;
 ApDb *apdb;
-
+BaseSniffer *sniffer;
 ZmqEventSender *sender;
 
 static int count;
@@ -69,6 +69,7 @@ void terminate_function()
         delete clientdb;
         delete apdb;
         delete sender;
+        delete sniffer;
 }
 
 void terminate_handler(int sig)
@@ -101,20 +102,26 @@ bool parse(const RefPacket &ref)
 
 int main(int argc, char **argv)
 {
-        char *monitor_dev;
-        char report_dev[256];
         int ret;
+        sigset_t signal_mask;
+        sigemptyset(&signal_mask);
+        sigaddset(&signal_mask, SIGINT);
+        char report_dev[32];
 
-        if (argc != 3) {
+        if (argc == 4 && !strcmp(argv[1], "-f")) {
+                sniffer = new FileSniffer(std::string(argv[2]));
+                sprintf(report_dev, "tcp://%s:*", argv[3]);
+        } else if (argc == 3) {
+                sniffer = new Sniffer(std::string(argv[1]), 1500, true);
+                sprintf(report_dev, "tcp://%s:*", argv[2]);
+        } else {
                 std::cerr << "Usage: " << argv[0] << " <monitor device> <report device>" << std::endl;
                 exit(1);
         }
 
-        monitor_dev = argv[1];
-        sprintf(report_dev, "tcp://%s:*", argv[2]);
-        sigset_t signal_mask;
-        sigemptyset(&signal_mask);
-        sigaddset(&signal_mask, SIGINT);
+        if (!sniffer)
+                exit(1);
+
         ret = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
         if (ret != 0)
                 std::cerr << "failed to set sigmask\n";
@@ -138,27 +145,15 @@ int main(int argc, char **argv)
         parsers.push_back(new Dot11StaParser(clientdb, apdb));
 
         /* Ctrl-C handler */
-        sigaddset(&signal_mask, SIGINT);
         ret = pthread_sigmask (SIG_UNBLOCK, &signal_mask, NULL);
         if (ret != 0)
                 std::cerr << "failed to set sigmask\n";
 
         signal(SIGINT, terminate_handler);
 
-        Sniffer sniffer(std::string(monitor_dev), 1500, true);
-        sniffer.sniff_loop(parse);
+        sniffer->sniff_loop(parse);
 
         std::cerr << "sniff_loop exited\n";
         terminate_function();
         exit(1);
-        /*
-        	FileSniffer sniffer("/home/developer/cap1.pcap");
-        	while (count++ < 100000) {
-        		std::cout << "packet: " << count << std::endl;
-        		PDU *pdu = sniffer.next_packet();
-        		PDU::PDUType type = pdu->pdu_type();
-        		std::cout << "type: " << type << std::endl;
-        	}
-        */
-
 }

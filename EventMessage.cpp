@@ -83,7 +83,7 @@ std::ostream &operator<<(std::ostream &os, const EventMessage &obj)
         strftime(buf, 128, "%F %T", localtime(&time));
         os << buf
 //        << "." << std::setw(3) << std::setfill('0') << ms
-        << ", " << obj.mac;
+           << ", " << obj.mac;
 
         return os;
 }
