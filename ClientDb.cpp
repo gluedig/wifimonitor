@@ -3,8 +3,8 @@
 
 #include "EventMessage.h"
 
-#define AVG_COUNT 1
-#define RSSI_HIST 0
+#define AVG_COUNT 8
+#define RSSI_HIST 1
 
 bool ClientDb::newClientEvent(ClientInfo *info)
 {
@@ -41,7 +41,6 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE, data.mac,
                                                data.avg_rssi, data.last_rssi, data.asked_ssids);
 //                        std::cout << msg.serialize() << std::endl;
-                        std::cout << msg << ", update" << std::endl;
                 }
         } else {
                 ClientData new_data;
