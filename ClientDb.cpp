@@ -41,7 +41,6 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE, data.mac,
                                                data.avg_rssi, data.last_rssi, data.asked_ssids);
 //                        std::cout << msg.serialize() << std::endl;
-                        sender->sendMessage(msg);
                         std::cout << msg << ", update" << std::endl;
                 }
         } else {
@@ -60,7 +59,6 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                                        new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
 //                std::cout << msg.serialize() << std::endl;
                 sender->sendMessage(msg);
-                std::cout << msg << ", new" << std::endl;
         }
         db_mutex.unlock();
 
