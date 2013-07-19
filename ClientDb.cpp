@@ -14,7 +14,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
         db_mutex.lock();
 
         if (db.count(info->mac)) {
-                bool send_update = true;
+                bool send_update = false;
                 ClientData data = db[info->mac];
                 data.age = 0;
 
@@ -39,8 +39,9 @@ bool ClientDb::newClientEvent(ClientInfo *info)
 
                 if (send_update) {
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE, data.mac,
-                                               data.avg_rssi, data.last_rssi, data.asked_ssids);
+                                               data.avg_rssi, prev_avg, data.asked_ssids);
 //                        std::cout << msg.serialize() << std::endl;
+                        sender->sendMessage(msg);
                 }
         } else {
                 ClientData new_data;
