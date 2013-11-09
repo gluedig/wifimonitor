@@ -10,7 +10,7 @@
 
 #define CLEANUP_PERIOD 30
 #define CLEANUP_MAXAGE 4
-
+#define UPDATE_PERIOD 1
 
 using namespace Tins;
 
@@ -26,7 +26,7 @@ struct cleanup_thread_params {
         ClientDb *clt_db;
         ApDb *ap_db;
         std::atomic_bool cleanup_thread_flag;
-} thread_params;
+} cln_thread_params;
 
 void *cleanup_function(void *param)
 {
@@ -39,7 +39,24 @@ void *cleanup_function(void *param)
         }
 }
 
+struct update_thread_params {
+        ClientDb *clt_db;
+        std::atomic_bool update_thread_flag;
+} upd_thread_params;
+
+void *update_function(void *param)
+{
+        struct update_thread_params *params = (struct update_thread_params *)param;
+
+        while (params->update_thread_flag.load()) {
+                sleep(UPDATE_PERIOD);
+                params->clt_db->send_updates();
+        }
+}
+
+
 pthread_t cleanup_thread;
+pthread_t update_thread;
 std::once_flag terminate_flag;
 
 std::vector<Parser *> parsers;
@@ -54,9 +71,13 @@ static int ignored;
 void terminate_function()
 {
         std::cerr << "Terminating, waiting for cleanup thread to finish\n";
-        thread_params.cleanup_thread_flag.store(false);
+        cln_thread_params.cleanup_thread_flag.store(false);
         pthread_cancel(cleanup_thread);
         pthread_join(cleanup_thread, NULL);
+        std::cerr << "Terminating, waiting for update thread to finish\n";
+        upd_thread_params.update_thread_flag.store(false);
+        pthread_cancel(update_thread);
+        pthread_join(update_thread, NULL);
 
         for (std::vector<Parser *>::iterator it = parsers.begin() ; it != parsers.end(); ++it) {
                 Parser *parser = *it;
@@ -133,12 +154,19 @@ int main(int argc, char **argv)
         clientdb = new ClientDb(sender);
         apdb = new ApDb(sender);
 
-        thread_params.clt_db = clientdb;
-        thread_params.ap_db = apdb;
-        thread_params.cleanup_thread_flag.store(true);
-        ret = pthread_create(&cleanup_thread, NULL, cleanup_function, (void *)&thread_params);
+        cln_thread_params.clt_db = clientdb;
+        cln_thread_params.ap_db = apdb;
+        cln_thread_params.cleanup_thread_flag.store(true);
+        ret = pthread_create(&cleanup_thread, NULL, cleanup_function, (void *)&cln_thread_params);
         if (ret)
                 std::cerr << "failed to create cleanup thread\n";
+
+        upd_thread_params.clt_db = clientdb;
+        upd_thread_params.update_thread_flag.store(true);
+        ret = pthread_create(&update_thread, NULL, update_function, (void *)&upd_thread_params);
+        if (ret)
+                std::cerr << "failed to create update thread\n";
+
 
         parsers.push_back(new RadioTapParser());
         parsers.push_back(new Dot11ApParser(apdb));

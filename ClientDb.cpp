@@ -4,7 +4,7 @@
 #include "EventMessage.h"
 
 #define AVG_COUNT 8
-#define RSSI_HIST 1
+#define RSSI_HIST 0
 
 bool ClientDb::newClientEvent(ClientInfo *info)
 {
@@ -30,18 +30,16 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 }
 
                 /* trigger if average RSSI changed */
-                if ((data.avg_rssi != prev_avg) &&
-                    (data.avg_rssi > prev_avg+RSSI_HIST) || (data.avg_rssi < prev_avg-RSSI_HIST)) {
+                if (data.avg_rssi != prev_avg) {
                         send_update = true;
                 }
 
                 db[info->mac] = data;
 
                 if (send_update) {
-                        ClientEventMessage msg(EventMessage::CLIENT_UPDATE, data.mac,
-                                               data.avg_rssi, prev_avg, data.asked_ssids);
-//                        std::cout << msg.serialize() << std::endl;
-                        sender->sendMessage(msg);
+                        updates_mutex.lock();
+                        need_update.insert(info->mac);
+                        updates_mutex.unlock();
                 }
         } else {
                 ClientData new_data;
@@ -85,6 +83,27 @@ void ClientDb::cleanup(int maxage)
         }
 
         db_mutex.unlock();
+}
+
+void ClientDb::send_updates()
+{
+        updates_mutex.lock();
+        int count = need_update.size();
+        auto it = need_update.begin();
+        while (it != need_update.end()) {
+                it++;
+                if (db.count(*it) > 0) {
+                        ClientData data = db[*it];
+                        ClientEventMessage msg(EventMessage::CLIENT_UPDATE,
+                                      data.mac, data.avg_rssi, data.last_rssi, data.asked_ssids);
+                        std::cout << msg.serialize() << std::endl;
+                        sender->sendMessage(msg);
+                }
+        }
+        need_update.clear();
+        updates_mutex.unlock();
+        if (count)
+                std::cout << "Sent updates for " << count << " clients" << std::endl;
 }
 
 ClientDb::ClientDb(EventSender *_sender) : sender(_sender), added(0), removed(0)
