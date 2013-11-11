@@ -32,6 +32,7 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 /* trigger if average RSSI changed */
                 if (data.avg_rssi != prev_avg) {
                         send_update = true;
+                        data.prev_avg_rssi = prev_avg;
                 }
 
                 db[info->mac] = data;
@@ -54,8 +55,9 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                 db.insert(std::pair<Tins::Dot11::address_type, ClientData>(info->mac, new_data));
 
                 ClientEventMessage msg(EventMessage::CLIENT_ADD, new_data.mac,
-                                       new_data.avg_rssi, new_data.last_rssi, new_data.asked_ssids);
+                                       new_data.avg_rssi, new_data.prev_avg_rssi, new_data.asked_ssids);
 //                std::cout << msg.serialize() << std::endl;
+                std::cout << "Add: " << new_data.mac << std::endl;
                 sender->sendMessage(msg);
         }
         db_mutex.unlock();
@@ -71,8 +73,9 @@ void ClientDb::cleanup(int maxage)
                 it->second.age++;
                 if (it->second.age > maxage) {
                         ClientEventMessage msg(EventMessage::CLIENT_REMOVE, it->second.mac,
-                                               it->second.avg_rssi, it->second.last_rssi, it->second.asked_ssids);
+                                               it->second.avg_rssi, it->second.prev_avg_rssi, it->second.asked_ssids);
 //                        std::cout << msg.serialize() << std::endl;
+                        std::cout << "Remove: " << it->second.mac << std::endl;
                         sender->sendMessage(msg);
 
                         removed++;
@@ -91,19 +94,18 @@ void ClientDb::send_updates()
         int count = need_update.size();
         auto it = need_update.begin();
         while (it != need_update.end()) {
-                it++;
                 if (db.count(*it) > 0) {
                         ClientData data = db[*it];
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE,
-                                      data.mac, data.avg_rssi, data.last_rssi, data.asked_ssids);
-                        std::cout << msg.serialize() << std::endl;
+                                      data.mac, data.avg_rssi, data.prev_avg_rssi, data.asked_ssids);
+//                        std::cout << msg.serialize() << std::endl;
+                        std::cout << "Update: " << data.mac << std::endl;
                         sender->sendMessage(msg);
                 }
+                it++;
         }
         need_update.clear();
         updates_mutex.unlock();
-        if (count)
-                std::cout << "Sent updates for " << count << " clients" << std::endl;
 }
 
 ClientDb::ClientDb(EventSender *_sender) : sender(_sender), added(0), removed(0)

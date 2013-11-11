@@ -13,13 +13,14 @@
 #include "EventSender.h"
 
 struct ClientData {
-        ClientData() : age(0), last_rssi(0), avg_rssi(0) {};
+        ClientData() : age(0), last_rssi(0), avg_rssi(0), prev_avg_rssi(0) {};
         Tins::Dot11::address_type mac;
         int age;
         time_t first_seen;
 
         int last_rssi;
         int avg_rssi;
+        int prev_avg_rssi;
 
         std::set<std::string> asked_ssids;
         friend std::ostream &operator<<(std::ostream &os, const ClientData &obj);
