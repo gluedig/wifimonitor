@@ -21,7 +21,7 @@ ZmqEventSender::~ZmqEventSender()
         zctx_destroy(&ctx);
 }
 
-int ZmqEventSender::bind(std::string address)
+int ZmqEventSender::connect(std::string address)
 {
         zmq_pub_sock = zsocket_new(ctx, ZMQ_PUB);
         assert(zmq_pub_sock);

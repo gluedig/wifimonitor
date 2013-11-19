@@ -8,6 +8,7 @@
 
 #include <tins/tins.h>
 
+
 #define CLEANUP_PERIOD 30
 #define CLEANUP_MAXAGE 4
 #define UPDATE_PERIOD 1
@@ -21,6 +22,8 @@ using namespace Tins;
 #include "ClientDb.h"
 #include "ApDb.h"
 #include "ZmqEventSender.h"
+#include "WebsocketEventSender.h"
+#include "MonitorId.h"
 
 struct cleanup_thread_params {
         ClientDb *clt_db;
@@ -63,7 +66,7 @@ std::vector<Parser *> parsers;
 ClientDb *clientdb;
 ApDb *apdb;
 BaseSniffer *sniffer;
-ZmqEventSender *sender;
+EventSender *sender;
 
 static int count;
 static int ignored;
@@ -127,16 +130,18 @@ int main(int argc, char **argv)
         sigset_t signal_mask;
         sigemptyset(&signal_mask);
         sigaddset(&signal_mask, SIGINT);
-        char report_dev[32];
+        std::string report_dev;
 
-        if (argc == 4 && !strcmp(argv[1], "-f")) {
+        if (argc == 5 && !strcmp(argv[1], "-f")) {
                 sniffer = new FileSniffer(std::string(argv[2]));
-                sprintf(report_dev, "tcp://%s:*", argv[3]);
-        } else if (argc == 3) {
+                report_dev = std::string(argv[3]);
+                MonitorId::getInstance().setId(atoi(argv[4]));
+        } else if (argc == 4) {
                 sniffer = new Sniffer(std::string(argv[1]), 1500, true);
-                sprintf(report_dev, "tcp://%s:*", argv[2]);
+                report_dev = std::string(argv[2]);
+                MonitorId::getInstance().setId(atoi(argv[3]));
         } else {
-                std::cerr << "Usage: " << argv[0] << " <monitor device> <report device>" << std::endl;
+                std::cerr << "Usage: " << argv[0] << " <monitor device> <report url> <monitor id>" << std::endl;
                 exit(1);
         }
 
@@ -146,13 +151,15 @@ int main(int argc, char **argv)
         ret = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
         if (ret != 0)
                 std::cerr << "failed to set sigmask\n";
-
+        
         sender = new ZmqEventSender();
-        if (!sender->bind(report_dev))
-                exit(1);
-
         clientdb = new ClientDb(sender);
         apdb = new ApDb(sender);
+
+        if (!sender->connect(report_dev)) {
+                std::cerr << "EventSender failed\n";
+                exit(1);
+        }
 
         cln_thread_params.clt_db = clientdb;
         cln_thread_params.ap_db = apdb;

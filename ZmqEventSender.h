@@ -11,7 +11,7 @@ class ZmqEventSender : public EventSender
         public:
                 ZmqEventSender();
                 ~ZmqEventSender();
-                int bind(std::string addr);
+                int connect(std::string addr);
                 virtual bool sendMessage(EventMessage &msg);
 
         private:

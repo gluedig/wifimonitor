@@ -8,12 +8,16 @@ class MonitorId
                         return instance;
                 }
                 int getId() {
-                        return 1;
+                        return id;
+                }
+                int setId(int _id) {
+                        id = _id;
                 }
         private:
-                MonitorId() {};
+                MonitorId() : id(0) {};
                 MonitorId(MonitorId const &);
                 void operator=(MonitorId const &);
+                int id;
 
 };
 #endif

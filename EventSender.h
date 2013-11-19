@@ -6,5 +6,6 @@ class EventSender
 {
         public:
                 virtual bool sendMessage(EventMessage &) = 0;
+                virtual int connect(std::string) = 0;
 };
 #endif
