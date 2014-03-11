@@ -5,13 +5,17 @@
 #include <atomic>
 #include <mutex>
 #include <pthread.h>
-
 #include <tins/tins.h>
-
+#include <easylogging++.h>
 
 #define CLEANUP_PERIOD 30
 #define CLEANUP_MAXAGE 4
 #define UPDATE_PERIOD 1
+
+#define _ELPP_THREAD_SAFE 1
+#define _ELPP_FORCE_USE_STD_THREAD 1
+#define _ELPP_STL_LOGGING 1
+_INITIALIZE_EASYLOGGINGPP
 
 using namespace Tins;
 
@@ -21,9 +25,9 @@ using namespace Tins;
 #include "Dot11Parser.h"
 #include "ClientDb.h"
 #include "ApDb.h"
-#include "ZmqEventSender.h"
 #include "WebsocketEventSender.h"
 #include "MonitorId.h"
+#include "EventSender.h"
 
 struct cleanup_thread_params {
         ClientDb *clt_db;
@@ -73,11 +77,11 @@ static int ignored;
 
 void terminate_function()
 {
-        std::cerr << "Terminating, waiting for cleanup thread to finish\n";
+        LOG(DEBUG) << "Terminating, waiting for cleanup thread to finish";
         cln_thread_params.cleanup_thread_flag.store(false);
         pthread_cancel(cleanup_thread);
         pthread_join(cleanup_thread, NULL);
-        std::cerr << "Terminating, waiting for update thread to finish\n";
+        LOG(DEBUG) << "Terminating, waiting for update thread to finish";
         upd_thread_params.update_thread_flag.store(false);
         pthread_cancel(update_thread);
         pthread_join(update_thread, NULL);
@@ -87,9 +91,9 @@ void terminate_function()
                 delete parser;
         }
 
-        std::cerr << "Finishing, total packets: " << count << " ignored: " << ignored << std::endl;
-        std::cerr << *clientdb << std::endl;
-        std::cerr << *apdb << std::endl;
+        LOG(INFO) << "Finishing, total packets: " << count << " ignored: " << ignored;
+        LOG(INFO) << *clientdb;
+        LOG(INFO) << *apdb;
         delete clientdb;
         delete apdb;
         delete sender;
@@ -104,14 +108,14 @@ void terminate_handler(int sig)
         raise(sig);
 }
 
-bool parse(const RefPacket &ref)
+bool parse(const PDU &ref)
 {
         ClientInfo info;
 
         count++;
-        info.timestamp = ref.timestamp();
+        info.timestamp = Timestamp::current_time();
         for (std::vector<Parser *>::iterator it = parsers.begin() ; it != parsers.end(); ++it) {
-                if (!(*it)->parse(&info, ref.pdu()))
+                if (!(*it)->parse(&info, ref))
                         break;
         }
 
@@ -122,7 +126,6 @@ bool parse(const RefPacket &ref)
 
         return true;
 }
-
 
 int main(int argc, char **argv)
 {
@@ -149,31 +152,38 @@ int main(int argc, char **argv)
                 exit(1);
 
         ret = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
-        if (ret != 0)
-                std::cerr << "failed to set sigmask\n";
+        if (ret != 0) {
+                LOG(ERROR) << "failed to set sigmask";
+                exit(1);
+        }
         
-        sender = new ZmqEventSender();
+        sender = new WSEventSender();
         clientdb = new ClientDb(sender);
         apdb = new ApDb(sender);
 
-        if (!sender->connect(report_dev)) {
-                std::cerr << "EventSender failed\n";
-                exit(1);
-        }
+        mac_clbk_fnct watch_clbk = std::bind(&ClientDb::add_watched, clientdb, std::placeholders::_1);
+        mac_clbk_fnct unwatch_clbk = std::bind(&ClientDb::remove_watched, clientdb, std::placeholders::_1);
+
+        sender->set_watch_callback(watch_clbk);
+        sender->set_unwatch_callback(unwatch_clbk);
+        std::thread t([&sender, report_dev](){ sender->connect(report_dev); });
 
         cln_thread_params.clt_db = clientdb;
         cln_thread_params.ap_db = apdb;
         cln_thread_params.cleanup_thread_flag.store(true);
         ret = pthread_create(&cleanup_thread, NULL, cleanup_function, (void *)&cln_thread_params);
-        if (ret)
-                std::cerr << "failed to create cleanup thread\n";
+        if (ret) {
+                LOG(ERROR) << "failed to create cleanup thread";
+                exit(1);
+        }
 
         upd_thread_params.clt_db = clientdb;
         upd_thread_params.update_thread_flag.store(true);
         ret = pthread_create(&update_thread, NULL, update_function, (void *)&upd_thread_params);
-        if (ret)
-                std::cerr << "failed to create update thread\n";
-
+        if (ret) {
+                LOG(ERROR) << "failed to create update thread";
+                exit(1);
+        }
 
         parsers.push_back(new RadioTapParser());
         parsers.push_back(new Dot11ApParser(apdb));
@@ -181,14 +191,16 @@ int main(int argc, char **argv)
 
         /* Ctrl-C handler */
         ret = pthread_sigmask (SIG_UNBLOCK, &signal_mask, NULL);
-        if (ret != 0)
-                std::cerr << "failed to set sigmask\n";
+        if (ret != 0) {
+                LOG(ERROR) << "failed to set sigmask";
+                exit(1);
+        }
 
         signal(SIGINT, terminate_handler);
 
         sniffer->sniff_loop(parse);
 
-        std::cerr << "sniff_loop exited\n";
+        LOG(DEBUG) << "sniff_loop exited";
         terminate_function();
-        exit(1);
+        exit(0);
 }

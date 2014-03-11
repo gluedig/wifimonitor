@@ -1,8 +1,12 @@
 #include <time.h>
+#include <easylogging++.h>
 #include "ApDb.h"
 bool ApDb::inDb(Tins::Dot11::address_type mac)
 {
-        return db.count(mac);
+        db_mutex.lock();
+        bool indb = (db.count(mac) != 0);
+        db_mutex.unlock();
+        return indb;
 }
 
 
@@ -11,10 +15,11 @@ bool ApDb::newApEvent(ClientInfo *info)
         if (info->mac == null_address || info->mac == Tins::Dot11::BROADCAST)
                 return false;
 
-        db_mutex.lock();
         if (inDb(info->mac)) {
                 bool send_update = false;
+                db_mutex.lock();
                 ApData data = db[info->mac];
+                db_mutex.unlock();
                 data.age = 0;
                 if (data.ssid != info->asked_SSID) {
                         data.ssid = info->asked_SSID;
@@ -24,13 +29,15 @@ bool ApDb::newApEvent(ClientInfo *info)
                         data.channel = info->channel;
                         send_update = true;
                 }
+                db_mutex.lock();
                 db[info->mac] = data;
+                db_mutex.unlock();
 
                 if (send_update) {
                         ApEventMessage msg(EventMessage::AP_UPDATE, data.mac,
                                            data.rssi, data.channel, data.ssid);
-//                        std::cout << msg.serialize() << std::endl;
-                        sender->sendMessage(msg);
+                        LOG(INFO) << "Update AP: " << data.mac << " SSID: " << data.ssid;
+//                        sender->sendMessage(msg);
                 }
 
 
@@ -45,13 +52,14 @@ bool ApDb::newApEvent(ClientInfo *info)
                         data.ssid = info->asked_SSID;
 
                 added++;
+                db_mutex.lock();
                 db.insert(std::pair<Tins::Dot11::address_type, ApData>(info->mac, data));
+                db_mutex.unlock();
                 ApEventMessage msg(EventMessage::AP_ADD, data.mac,
                                    data.rssi, data.channel, data.ssid);
-//                std::cout << msg.serialize() << std::endl;
-                sender->sendMessage(msg);
+                LOG(INFO) << "Add AP: " << data.mac << " SSID: " << data.ssid;
+//                sender->sendMessage(msg);
         }
-        db_mutex.unlock();
 
         return true;
 }
@@ -65,8 +73,8 @@ void ApDb::cleanup(int maxage)
                 if (it->second.age > maxage) {
                         ApEventMessage msg(EventMessage::AP_REMOVE, it->second.mac,
                                            it->second.rssi, it->second.channel, it->second.ssid);
-//                        std::cout << msg.serialize() << std::endl;
-                        sender->sendMessage(msg);
+                        LOG(INFO) << "Remove AP: " << it->second.mac << " SSID: " << it->second.ssid;
+//                        sender->sendMessage(msg);
 
                         removed++;
                         db.erase(it++);

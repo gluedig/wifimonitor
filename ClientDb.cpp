@@ -1,5 +1,6 @@
 #include <time.h>
 #include "ClientDb.h"
+#include <easylogging++.h>
 
 #include "EventMessage.h"
 
@@ -11,11 +12,21 @@ bool ClientDb::newClientEvent(ClientInfo *info)
         if (info->mac == null_address || info->mac == Tins::Dot11::BROADCAST)
                 return false;
 
+        bool present = false;
         db_mutex.lock();
+        present = (db.count(info->mac) != 0);
+        db_mutex.unlock();
 
-        if (db.count(info->mac)) {
+        bool watch = false;
+        watched_mutex.lock();
+        watch = (watched.count(info->mac) != 0);
+        watched_mutex.unlock();
+
+        if (present) {
                 bool send_update = false;
+                db_mutex.lock();
                 ClientData data = db[info->mac];
+                db_mutex.unlock();
                 data.age = 0;
 
                 /* do RSSI averaging */
@@ -35,9 +46,11 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                         data.prev_avg_rssi = prev_avg;
                 }
 
+                db_mutex.lock();
                 db[info->mac] = data;
+                db_mutex.unlock();
 
-                if (send_update) {
+                if (send_update && watch) {
                         updates_mutex.lock();
                         need_update.insert(info->mac);
                         updates_mutex.unlock();
@@ -52,15 +65,15 @@ bool ClientDb::newClientEvent(ClientInfo *info)
                         new_data.asked_ssids.insert(info->asked_SSID);
 
                 added++;
+                db_mutex.lock();
                 db.insert(std::pair<Tins::Dot11::address_type, ClientData>(info->mac, new_data));
+                db_mutex.unlock();
 
                 ClientEventMessage msg(EventMessage::CLIENT_ADD, new_data.mac,
                                        new_data.avg_rssi, new_data.prev_avg_rssi, new_data.asked_ssids);
-//                std::cout << msg.serialize() << std::endl;
-                std::cout << "Add: " << new_data.mac << std::endl;
+                LOG(INFO) << "Add: " << new_data.mac;
                 sender->sendMessage(msg);
         }
-        db_mutex.unlock();
 
         return true;
 }
@@ -74,8 +87,7 @@ void ClientDb::cleanup(int maxage)
                 if (it->second.age > maxage) {
                         ClientEventMessage msg(EventMessage::CLIENT_REMOVE, it->second.mac,
                                                it->second.avg_rssi, it->second.prev_avg_rssi, it->second.asked_ssids);
-//                        std::cout << msg.serialize() << std::endl;
-                        std::cout << "Remove: " << it->second.mac << std::endl;
+                        LOG(INFO) << "Remove: " << it->second.mac;
                         sender->sendMessage(msg);
 
                         removed++;
@@ -98,8 +110,7 @@ void ClientDb::send_updates()
                         ClientData data = db[*it];
                         ClientEventMessage msg(EventMessage::CLIENT_UPDATE,
                                       data.mac, data.avg_rssi, data.prev_avg_rssi, data.asked_ssids);
-//                        std::cout << msg.serialize() << std::endl;
-                        std::cout << "Update: " << data.mac << std::endl;
+                        LOG(INFO) << "Update: " << data.mac;
                         sender->sendMessage(msg);
                 }
                 it++;
@@ -140,5 +151,21 @@ std::ostream &operator<<(std::ostream &os, const ClientData &obj)
         }
 
         return os;
+}
+void ClientDb::add_watched(std::string mac)
+{
+        LOG(DEBUG) << "watch: " << mac;
+        watched_mutex.lock();
+        watched.insert(Tins::Dot11::address_type(mac));
+        watched_mutex.unlock();
+}
+
+void ClientDb::remove_watched(std::string mac)
+{
+        LOG(DEBUG) << "unwatch: " << mac;
+        watched_mutex.lock();
+        watched.erase(Tins::Dot11::address_type(mac));
+        watched_mutex.unlock();
+
 }
 

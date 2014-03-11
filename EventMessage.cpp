@@ -14,19 +14,18 @@ void EventMessage::serialize_start()
 {
         root = json_object();
         json_object_set_new(root, "timestamp", json_integer(timestamp));
-        json_object_set_new(root, "origin_id", json_integer(MonitorId::getInstance().getId()));
+        json_object_set_new(root, "mon_id", json_integer(MonitorId::getInstance().getId()));
         json_object_set_new(root, "mac", json_string(mac.to_string().c_str()));
         json_object_set_new(root, "event_type", json_integer(type));
+        json_object_set_new(root, "msg", json_string("event"));
+
 }
 
 std::string EventMessage::serialize_end()
 {
         std::string ret;
         if (root) {
-                json_t *root_arr = json_array();
-                json_array_append(root_arr, root);
-                char *dump = json_dumps(root_arr, 0);
-                json_decref(root_arr);
+                char *dump = json_dumps(root, 0);
                 if (dump) {
                         ret = std::string(dump);
                         free(dump);
@@ -48,6 +47,7 @@ std::string ClientEventMessage::serialize()
         EventMessage::serialize_start();
         json_object_set_new(root, "rssi", json_integer(rssi));
         json_object_set_new(root, "prev_rssi", json_integer(prev_rssi));
+/*
         json_t *ssid_obj = json_array();
 
         auto it = ssids.begin();
@@ -56,6 +56,7 @@ std::string ClientEventMessage::serialize()
                 it++;
         }
         json_object_set_new(root, "probed_ssids", ssid_obj);
+*/
         return EventMessage::serialize_end();
 }
 

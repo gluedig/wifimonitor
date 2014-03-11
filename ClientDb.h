@@ -35,11 +35,15 @@ class ClientDb
                 int added, removed;
                 EventSender *sender;
                 std::set<Tins::Dot11::address_type> need_update;
+                std::set<Tins::Dot11::address_type> watched;
+                std::mutex watched_mutex;
         public:
                 bool newClientEvent(ClientInfo *info);
                 friend std::ostream &operator<<(std::ostream &os, const ClientDb &obj);
                 void cleanup(int maxage);
                 void send_updates();
                 ClientDb(EventSender *sender);
+                void add_watched(std::string mac);
+                void remove_watched(std::string mac);
 };
 #endif
