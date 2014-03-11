@@ -61,9 +61,20 @@ void *update_function(void *param)
         }
 }
 
+struct websock_thread_params {
+        EventSender *sender;
+        std::string report_dev;
+} ws_thread_params;
+
+void *ws_function(void *param)
+{
+        struct websock_thread_params *params = (struct websock_thread_params *)param;
+        params->sender->connect(params->report_dev);
+}
 
 pthread_t cleanup_thread;
 pthread_t update_thread;
+pthread_t ws_thread;
 std::once_flag terminate_flag;
 
 std::vector<Parser *> parsers;
@@ -85,6 +96,10 @@ void terminate_function()
         upd_thread_params.update_thread_flag.store(false);
         pthread_cancel(update_thread);
         pthread_join(update_thread, NULL);
+        LOG(DEBUG) << "Terminating, waiting for ws thread to finish";
+        delete sender;
+        pthread_cancel(ws_thread);
+        pthread_join(ws_thread, NULL);
 
         for (std::vector<Parser *>::iterator it = parsers.begin() ; it != parsers.end(); ++it) {
                 Parser *parser = *it;
@@ -96,7 +111,6 @@ void terminate_function()
         LOG(INFO) << *apdb;
         delete clientdb;
         delete apdb;
-        delete sender;
         delete sniffer;
 }
 
@@ -166,7 +180,13 @@ int main(int argc, char **argv)
 
         sender->set_watch_callback(watch_clbk);
         sender->set_unwatch_callback(unwatch_clbk);
-        std::thread t([&sender, report_dev](){ sender->connect(report_dev); });
+        ws_thread_params.sender = sender;
+        ws_thread_params.report_dev = report_dev;
+        ret = pthread_create(&ws_thread, NULL, ws_function, (void *)&ws_thread_params);
+        if (ret) {
+                LOG(ERROR) << "failed to create ws thread";
+                exit(1);
+        }
 
         cln_thread_params.clt_db = clientdb;
         cln_thread_params.ap_db = apdb;
