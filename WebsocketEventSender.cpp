@@ -5,10 +5,10 @@ WSEventSender::WSEventSender()
 {
         watch_callback = unwatch_callback = NULL;
         ws_clt = std::unique_ptr<wsclient>(new wsclient());
-        ws_clt->set_message_handler(bind(&WSEventSender::on_message, this, _1, _2));
-        ws_clt->set_open_handler(bind(&WSEventSender::on_open, this, _1));
-        ws_clt->set_close_handler(bind(&WSEventSender::on_close, this, _1));
-        ws_clt->set_fail_handler(bind(&WSEventSender::on_fail, this, _1));
+        ws_clt->set_message_handler(bind(&WSEventSender::on_message, this, std::placeholders::_1, std::placeholders::_2));
+        ws_clt->set_open_handler(bind(&WSEventSender::on_open, this, std::placeholders::_1));
+        ws_clt->set_close_handler(bind(&WSEventSender::on_close, this, std::placeholders::_1));
+        ws_clt->set_fail_handler(bind(&WSEventSender::on_fail, this, std::placeholders::_1));
         ws_clt->clear_access_channels(websocketpp::log::alevel::all);
         ws_clt->set_access_channels(websocketpp::log::alevel::app);
 
